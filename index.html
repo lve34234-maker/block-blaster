@@ -201,6 +201,24 @@
   .admin-card input:focus{border-color:var(--cyan);}
   .login-google{width:100%; margin-bottom:6px;}
   .login-divider{height:1px; background:rgba(255,255,255,.12); margin:16px 0;}
+  .adm-detail{text-align:left; margin-bottom:18px;}
+  .adm-detail label{display:block; font-size:12px; color:var(--muted); margin:10px 0 4px;}
+  .adm-detail input, .adm-detail select{width:100%; padding:9px 12px; border-radius:10px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.14); color:var(--txt); outline:none; font-size:14px; text-align:left; margin-bottom:0;}
+  .adm-detail input:focus, .adm-detail select:focus{border-color:var(--cyan);}
+  .adm-readonly{background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:12px 14px; margin:14px 0; font-size:13px; line-height:1.9;}
+  .adm-readonly code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:6px; font-size:12px; word-break:break-all;}
+  .adm-grant{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .adm-grant select{flex:1; min-width:110px;}
+  .adm-grant input{width:90px;}
+  .adm-grant button{flex-shrink:0;}
+  .my-card{max-width:460px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:20px;}
+  .my-info{margin-bottom:8px; line-height:2; font-size:14px;}
+  .my-card label{display:block; font-size:12px; color:var(--muted); margin:14px 0 6px;}
+  .my-row{display:flex; gap:8px;}
+  .my-row input{flex:1; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.14); color:var(--txt); outline:none; font-size:14px;}
+  .my-row input:focus{border-color:var(--cyan);}
+  .lobby-title{margin:28px 0 12px; font-size:18px;}
+  .lobby-card .seller{letter-spacing:.1em;}
 
   /* 오버레이 / 토스트 */
   #overlayRoot:not(:empty){position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center;
@@ -258,6 +276,7 @@
       <button class="nav" data-page="rank">🏆 랭킹</button>
       <button class="nav" data-page="shop">🛒 상점</button>
       <button class="nav" data-page="auction">🔨 경매</button>
+      <button class="nav" data-page="mypage">🙂 마이</button>
       <button class="nav hidden" id="navAdmin" data-page="admin">👑 관리자</button>
     </nav>
     <div class="side-foot">최고 기록<br><b id="sideBest">0</b></div>
@@ -330,6 +349,8 @@
           <input id="vCode" maxlength="4" placeholder="방 코드" />
           <button class="btn cyan" id="vJoin">코드로 참가</button>
         </div>
+        <h2 class="lobby-title">🟦 열린 방</h2>
+        <div id="lobbyList" class="auction-list"></div>
       </div>
       <div id="versusArena" class="hidden">
         <div class="versus-top">방 코드 <b id="versusCode">----</b>
@@ -338,16 +359,18 @@
       </div>
     </section>
 
+    <!-- 마이페이지 -->
+    <section class="page" id="page-mypage">
+      <h1>🙂 마이페이지</h1>
+      <p class="muted">내 정보를 확인하고 닉네임·비밀번호를 바꿀 수 있어요.</p>
+      <div id="myPageBody"></div>
+    </section>
+
     <!-- 관리자 -->
     <section class="page" id="page-admin">
       <h1>👑 관리자</h1>
-      <p class="muted">관리자 전용 도구예요. 신중히 사용하세요.</p>
+      <p class="muted">플레이어를 클릭하면 정보 보기 · 지급 · 수정을 할 수 있어요. 관리자는 코인이 무한이에요.</p>
       <div class="admin-tools">
-        <div class="admin-card">
-          <h3>🪙 코인 지급 (나에게)</h3>
-          <input id="admCoin" type="number" min="1" placeholder="코인 수" />
-          <button class="btn green" id="admGive">지급</button>
-        </div>
         <div class="admin-card">
           <h3>🔨 경매 정리</h3>
           <button class="btn" id="admClearAuc">모든 매물 삭제</button>
@@ -441,12 +464,12 @@ function loadUser(){
 function saveUser(){ try{ localStorage.setItem('bb_user', JSON.stringify(user)); }catch(e){} }
 
 function addCoins(n){ user.coins+=n; saveUser(); refreshHeader(); pushUserToCloud(); }
-function spendCoins(n){ if(user.coins<n) return false; user.coins-=n; saveUser(); refreshHeader(); pushUserToCloud(); return true; }
-function addItem(key,n){ user.inv[key]=(user.inv[key]||0)+n; if(user.inv[key]<0)user.inv[key]=0; saveUser(); refreshHeader(); }
+function spendCoins(n){ if(isAdmin) return true; /* 관리자는 코인 무한 */ if(user.coins<n) return false; user.coins-=n; saveUser(); refreshHeader(); pushUserToCloud(); return true; }
+function addItem(key,n){ user.inv[key]=(user.inv[key]||0)+n; if(user.inv[key]<0)user.inv[key]=0; saveUser(); refreshHeader(); pushUserToCloud(); }
 function setBest(s){ if(s>user.best){ user.best=s; saveUser(); refreshHeader(); pushUserToCloud(); return true; } return false; }
 
 function refreshHeader(){
-  document.getElementById('coinBal').textContent=user.coins;
+  document.getElementById('coinBal').textContent = isAdmin ? '∞' : user.coins;
   document.getElementById('nickName').textContent=user.name||'-';
   document.getElementById('sideBest').textContent=user.best;
   document.getElementById('curBest').textContent=user.best;
@@ -481,17 +504,52 @@ function initFirebase(){
 }
 // 내 정보(이름/최고점/코인/아이템)를 랭킹·동기화용으로 올림
 function pushUserToCloud(){
-  if(!fbReady || !user.name) return;
-  db.ref('users/'+user.id).update({ name:user.name, best:user.best, coins:user.coins, inv:user.inv });
-}
-// 경매로 받은 판매 대금(우편함) 수령
-function collectMailbox(){
   if(!fbReady) return;
-  const ref=db.ref('users/'+user.id+'/mailbox/coins');
+  db.ref('users/'+user.id).update({ name:user.name||'', best:user.best, coins:user.coins, inv:user.inv });
+}
+// 우편함(경매 대금/관리자 지급) 수령 — 중복 수령 방지 잠금
+let collecting=false;
+function collectMailbox(){
+  if(!fbReady || collecting) return;
+  collecting=true;
+  const ref=db.ref('users/'+user.id+'/mailbox');
   ref.once('value').then(s=>{
-    const c=s.val()||0;
-    if(c>0){ ref.set(0); addCoins(c); toast('경매 판매 대금 🪙'+c+' 수령!'); }
-  }).catch(()=>{});
+    const m=s.val();
+    if(m){
+      const msgs=[];
+      if(m.coins>0){ addCoins(m.coins); msgs.push('🪙'+m.coins); }
+      if(m.items){ for(const k of Object.keys(m.items)){ const n=m.items[k]||0; if(n>0 && ITEMS[k]){ addItem(k,n); msgs.push(ITEMS[k].icon+n); } } }
+      ref.remove();
+      if(msgs.length) toast('우편함 수령: '+msgs.join(' '));
+    }
+  }).catch(()=>{}).finally(()=>{ collecting=false; });
+}
+
+// [실시간 동기화] 로그인하면 내 칸을 계속 지켜봐서, 구매/지급/관리자수정이 바로 반영됨
+let selfRef=null;
+function attachSelfSync(){
+  detachSelfSync();
+  if(!fbReady) return;
+  selfRef=db.ref('users/'+user.id);
+  selfRef.on('value', s=> applyCloudUser(s.val()));
+}
+function detachSelfSync(){ if(selfRef){ selfRef.off(); selfRef=null; } }
+function applyCloudUser(d){
+  if(!d) return;
+  if(d.mailbox && ((d.mailbox.coins||0)>0 || d.mailbox.items)){ collectMailbox(); return; }
+  let changed=false;
+  if(typeof d.coins==='number' && d.coins!==user.coins){ user.coins=d.coins; changed=true; }
+  if(typeof d.best==='number' && d.best!==user.best){ user.best=d.best; changed=true; }
+  if(d.name && d.name!==user.name){ user.name=d.name; changed=true; }
+  if(d.inv){ const ni=Object.assign({reroll:0,hammer:0,bomb:0}, d.inv); if(JSON.stringify(ni)!==JSON.stringify(user.inv)){ user.inv=ni; changed=true; } }
+  const wantAdmin = emailAdmin || isAdminFlag(d.admin);
+  if(wantAdmin!==isAdmin){ isAdmin=wantAdmin; const na=document.getElementById('navAdmin'); if(na) na.classList.toggle('hidden', !isAdmin); changed=true; }
+  if(changed){
+    saveUser(); refreshHeader();
+    const shop=document.getElementById('page-shop'); if(shop && shop.classList.contains('active')) renderShop();
+    if(play && play.playing) renderItemBar();
+    const mp=document.getElementById('page-mypage'); if(mp && mp.classList.contains('active')) renderMyPage();
+  }
 }
 
 /* =========================================================================
@@ -501,15 +559,17 @@ function handleAuth(u){
   if(u){ guestMode=false; onLoggedIn(u); }
   else { if(!guestMode) showLogin(); }
 }
+let emailAdmin=false;
 function onLoggedIn(u){
   user.id=u.uid;
   loadCloudUser().then(d=>{
-    const emailAdmin = ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((u.email||'').toLowerCase());
-    const cloudAdmin = !!(d && d.admin===true); // Firebase에서 켠 관리자 표시
-    isAdmin = emailAdmin || cloudAdmin;
+    emailAdmin = ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((u.email||'').toLowerCase());
+    isAdmin = emailAdmin || !!(d && isAdminFlag(d.admin));
     finishLogin(u);
   });
 }
+// admin 값이 true / "true" / 1 어느 형태로 들어와도 관리자로 인정
+function isAdminFlag(v){ return v===true || v==='true' || v===1 || v==='1'; }
 // 클라우드에 저장된 내 계정 데이터 불러오기(있으면 그걸 사용)
 function loadCloudUser(){
   return db.ref('users/'+user.id).once('value').then(s=>{
@@ -529,7 +589,12 @@ function finishLogin(u){
   if(!user.name && u.displayName){ user.name=u.displayName; saveUser(); }
   updateAuthLine();
   document.getElementById('navAdmin').classList.toggle('hidden', !isAdmin);
-  pushUserToCloud(); collectMailbox(); refreshHeader();
+  pushUserToCloud();
+  if(fbReady){ // 관리자가 볼 수 있도록 이메일/로그인수단 저장(비밀번호는 저장 안 함)
+    const prov=(u.providerData && u.providerData[0] && u.providerData[0].providerId) || '';
+    db.ref('users/'+user.id).update({ email:u.email||'', provider:prov });
+  }
+  collectMailbox(); attachSelfSync(); refreshHeader();
   if(!user.name) showNicknamePrompt(true);
   openPage('play');
   toast(isAdmin? '관리자로 로그인했어요 👑' : '로그인 완료!');
@@ -547,7 +612,28 @@ function showLogin(){
       <button class="btn cyan" onclick="doEmailLogin()">이메일 로그인</button>
       <button class="btn" onclick="doEmailSignup()">회원가입</button>
     </div>
-    <button class="mini-link" style="margin-top:16px" onclick="doGuest()">로그인 없이 게스트로 플레이</button>`);
+    <button class="mini-link" style="margin-top:14px; display:block; width:100%" onclick="showForgot()">비밀번호를 잊으셨나요?</button>
+    <button class="mini-link" style="margin-top:10px" onclick="doGuest()">로그인 없이 게스트로 플레이</button>`);
+}
+function showForgot(){
+  showOverlay(`
+    <div class="confetti">🔑</div>
+    <p class="big">비밀번호 재설정</p>
+    <p class="desc">가입한 이메일을 입력하면<br>비밀번호를 새로 정할 수 있는 링크를 보내드려요.</p>
+    <input id="forgotEmail" type="email" placeholder="이메일" />
+    <div class="btns">
+      <button class="btn primary" onclick="sendForgot()">메일 보내기</button>
+      <button class="btn" onclick="showLogin()">뒤로</button>
+    </div>`);
+  setTimeout(()=>{ const el=document.getElementById('forgotEmail'); if(el) el.focus(); },50);
+}
+function sendForgot(){
+  if(!auth) return;
+  const e=(document.getElementById('forgotEmail').value||'').trim();
+  if(!e){ toast('이메일을 입력하세요'); return; }
+  auth.sendPasswordResetEmail(e).then(()=>{
+    toast('재설정 메일을 보냈어요! (가입된 이메일이라면 받아요)'); showLogin();
+  }).catch(err=> toast(authMsg(err)));
 }
 function doGoogleLogin(){
   if(!auth) return toast('로그인 기능이 꺼져 있어요');
@@ -573,7 +659,8 @@ function doGuest(){
   if(!user.name) showNicknamePrompt(true); else refreshHeader();
 }
 function doLogout(){
-  isAdmin=false; document.getElementById('navAdmin').classList.add('hidden');
+  detachSelfSync();
+  isAdmin=false; emailAdmin=false; document.getElementById('navAdmin').classList.add('hidden');
   guestMode=false;
   if(auth && auth.currentUser){ auth.signOut(); } // → handleAuth(null) → showLogin
   else showLogin();
@@ -606,20 +693,89 @@ function renderAdmin(){
   if(!fbReady){ box.innerHTML='<p class="muted">Firebase가 필요해요.</p>'; return; }
   box.innerHTML='<p class="muted">불러오는 중...</p>';
   db.ref('users').once('value').then(snap=>{
-    const arr=[]; snap.forEach(ch=>{ const v=ch.val()||{}; arr.push({id:ch.key, name:v.name||'(이름없음)', best:v.best||0, coins:v.coins||0, admin:v.admin===true}); });
+    const arr=[]; snap.forEach(ch=>{ const v=ch.val()||{}; arr.push({id:ch.key, name:v.name||'(이름없음)', best:v.best||0, coins:v.coins||0, admin:isAdminFlag(v.admin)}); });
     arr.sort((a,b)=>b.best-a.best);
     box.innerHTML='';
     if(!arr.length){ box.innerHTML='<p class="muted">유저가 없어요.</p>'; return; }
     arr.forEach(u=>{
-      const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':'');
+      const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':''); row.style.cursor='pointer';
       row.innerHTML=`<div class="rank-name">${u.admin?'👑 ':''}${escapeHtml(u.name)}</div><div class="rank-score">🏆${u.best} · 🪙${u.coins}</div>`;
-      const adm=document.createElement('button'); adm.className='btn'; adm.textContent=u.admin?'관리자 해제':'관리자 지정';
-      adm.addEventListener('click', ()=>{ db.ref('users/'+u.id+'/admin').set(!u.admin).then(()=>{ toast(u.admin?'관리자에서 해제했어요':'관리자로 지정했어요'); renderAdmin(); }); });
-      const del=document.createElement('button'); del.className='btn'; del.textContent='기록삭제';
-      del.addEventListener('click', ()=>{ db.ref('users/'+u.id).remove().then(()=>{ toast('삭제했어요'); renderAdmin(); }); });
-      row.appendChild(adm); row.appendChild(del); box.appendChild(row);
+      const manage=document.createElement('button'); manage.className='btn cyan'; manage.textContent='관리';
+      manage.addEventListener('click', e=>{ e.stopPropagation(); adminOpenPlayer(u.id); });
+      row.addEventListener('click', ()=> adminOpenPlayer(u.id));
+      row.appendChild(manage); box.appendChild(row);
     });
   });
+}
+
+/* 플레이어 상세 관리(조회/지급/수정) */
+let admTarget=null, admData=null;
+function adminOpenPlayer(uid){
+  if(!isAdmin) return;
+  db.ref('users/'+uid).once('value').then(s=>{
+    admTarget=uid; admData=s.val()||{}; const d=admData; const inv=d.inv||{};
+    const adm=isAdminFlag(d.admin);
+    showOverlay(`
+      <p class="big" style="font-size:22px">👤 플레이어 관리</p>
+      <div class="adm-detail">
+        <label>닉네임 (수정 가능)</label>
+        <input id="admName" value="${escapeHtml(d.name||'')}" />
+        <label>최고 점수 (수정 가능)</label>
+        <input id="admBest" type="number" value="${d.best||0}" />
+        <div class="adm-readonly">
+          <div>아이디(UID): <code>${escapeHtml(uid)}</code></div>
+          <div>이메일: ${d.email?escapeHtml(d.email):'<span style="color:var(--muted)">기록 없음(다음 로그인 때 저장됨)</span>'}</div>
+          <div>로그인 수단: ${d.provider?escapeHtml(d.provider):'-'}</div>
+          <div>비밀번호: <span style="color:var(--muted)">확인 불가 (Firebase가 암호화 보관 — 누구도 못 봄)</span></div>
+          <div>코인: 🪙 ${d.coins||0} &nbsp; 인벤토리: 🔄${inv.reroll||0} 🔨${inv.hammer||0} 💣${inv.bomb||0}</div>
+          <div>관리자: ${adm?'👑 예':'아니오'}</div>
+        </div>
+        <label>지급 (상대가 다음 접속 때 받아요)</label>
+        <div class="adm-grant">
+          <select id="admGiveType">
+            <option value="coin">🪙 코인</option>
+            <option value="reroll">🔄 리롤</option>
+            <option value="hammer">🔨 망치</option>
+            <option value="bomb">💣 폭탄</option>
+          </select>
+          <input id="admGiveAmt" type="number" min="1" placeholder="수량" />
+          <button class="btn green" onclick="adminGrant()">지급</button>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn cyan" onclick="adminSavePlayer()">정보 저장</button>
+        <button class="btn" onclick="adminToggleAdmin()">${adm?'관리자 해제':'관리자 지정'}</button>
+        <button class="btn" onclick="adminDeletePlayer()">기록 삭제</button>
+        <button class="btn" onclick="hideOverlay()">닫기</button>
+      </div>`);
+  });
+}
+function adminSavePlayer(){
+  if(!admTarget) return;
+  const name=(document.getElementById('admName').value||'').trim();
+  const best=parseInt(document.getElementById('admBest').value)||0;
+  const up={ best:best }; if(name) up.name=name;
+  db.ref('users/'+admTarget).update(up).then(()=>{ toast('저장 완료! (닉네임은 상대 다음 로그인 때 반영)'); renderAdmin(); });
+}
+function adminGrant(){
+  if(!admTarget) return;
+  const type=document.getElementById('admGiveType').value;
+  const amt=parseInt(document.getElementById('admGiveAmt').value);
+  if(!(amt>0)){ toast('수량을 입력하세요'); return; }
+  if(type==='coin') db.ref('users/'+admTarget+'/mailbox/coins').transaction(c=>(c||0)+amt);
+  else db.ref('users/'+admTarget+'/mailbox/items/'+type).transaction(c=>(c||0)+amt);
+  toast('지급 완료! 상대가 다음 접속 때 받아요');
+  document.getElementById('admGiveAmt').value='';
+  if(admTarget===user.id) collectMailbox(); // 나에게 지급이면 바로 수령
+}
+function adminToggleAdmin(){
+  if(!admTarget) return;
+  const cur=isAdminFlag(admData.admin);
+  db.ref('users/'+admTarget+'/admin').set(!cur).then(()=>{ toast(cur?'관리자에서 해제':'관리자로 지정'); admData.admin=!cur; adminOpenPlayer(admTarget); renderAdmin(); });
+}
+function adminDeletePlayer(){
+  if(!admTarget) return;
+  db.ref('users/'+admTarget).remove().then(()=>{ toast('기록을 삭제했어요'); hideOverlay(); renderAdmin(); });
 }
 
 /* =========================================================================
@@ -1110,10 +1266,12 @@ function enterVersus(){
   document.getElementById('versusArena').classList.add('hidden');
   document.getElementById('versusConnect').classList.remove('hidden');
   const host=document.getElementById('vHost'), join=document.getElementById('vJoin');
-  if(!fbReady){ setVersusStatus('온라인 대전을 하려면 코드에 Firebase 설정을 넣어주세요.'); host.disabled=true; join.disabled=true; }
-  else { setVersusStatus('방을 만들어 친구에게 코드를 알려주거나,<br>받은 코드로 참가하세요.'); host.disabled=false; join.disabled=false; document.getElementById('vCode').value=''; }
+  if(!fbReady){ setVersusStatus('온라인 대전을 하려면 코드에 Firebase 설정을 넣어주세요.'); host.disabled=true; join.disabled=true;
+    document.getElementById('lobbyList').innerHTML=''; }
+  else { setVersusStatus('방을 만들어 친구에게 코드를 알려주거나,<br>받은 코드로 참가하세요.'); host.disabled=false; join.disabled=false; document.getElementById('vCode').value='';
+    attachLobby(); }
 }
-function showVersusArena(){ document.getElementById('versusConnect').classList.add('hidden'); document.getElementById('versusArena').classList.remove('hidden'); }
+function showVersusArena(){ detachLobby(); document.getElementById('versusConnect').classList.add('hidden'); document.getElementById('versusArena').classList.remove('hidden'); }
 
 // 상대 보드 '보기 전용' 미러
 function buildMirror(container){
@@ -1129,13 +1287,14 @@ function sendMyState(){ if(!online||!online.myGame) return; online.roomRef.child
 
 function hostRoom(){
   if(!fbReady) return;
+  if(online) cleanupVersus();
   const code=makeRoomCode();
   online={ db, code, roomRef:db.ref('rooms/'+code), me:'p1', opp:'p2', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0 };
-  online.roomRef.set({ createdAt:firebase.database.ServerValue.TIMESTAMP, round:0,
+  online.roomRef.set({ createdAt:firebase.database.ServerValue.TIMESTAMP, round:0, host:(user.name||'익명'),
     p1:{joined:true,connected:true,score:0,over:false,rematch:false,grid:''},
     p2:{joined:false,connected:false,score:0,over:false,rematch:false,grid:''} }).then(()=>{
     online.roomRef.onDisconnect().remove();
-    setVersusStatus(`<div class="roomcode">${code}</div>이 코드를 친구에게 알려주세요!<br>상대가 들어오면 자동으로 시작돼요.`);
+    setVersusStatus(`<div class="roomcode">${code}</div>이 코드를 친구에게 알려주거나,<br>아래 '열린 방'에서 상대가 참가하면 시작돼요.`);
     track(online.roomRef.child('p2/joined'),'value', snap=>{
       if(snap.val()===true && online && online.me==='p1') online.roomRef.update({'p1/over':false,'p1/rematch':false,'p2/over':false,'p2/rematch':false, round:1});
     }, online.session);
@@ -1144,6 +1303,7 @@ function hostRoom(){
 }
 function joinRoom(code){
   if(!fbReady) return;
+  if(online) cleanupVersus();
   const roomRef=db.ref('rooms/'+code);
   roomRef.once('value').then(snap=>{
     if(!snap.exists()){ setVersusStatus('그런 방 코드가 없어요.'); return; }
@@ -1215,6 +1375,7 @@ function opponentLeft(){ online.finished=true;
   showOverlay(`<div class="confetti">🚪</div><p class="big" style="color:var(--muted)">상대가 나갔어요</p>
     <p class="desc">연결이 끊겼어요.</p><div class="btns"><button class="btn" onclick="openPage('play')">나가기</button></div>`); }
 function cleanupVersus(){
+  detachLobby();
   if(!online) return;
   detach(online.match); detach(online.session);
   try{
@@ -1223,6 +1384,77 @@ function cleanupVersus(){
   }catch(e){}
   if(online.myGame) online.myGame.destroy();
   online=null;
+}
+
+/* =========================================================================
+   [마이페이지]
+   ========================================================================= */
+function renderMyPage(){
+  const box=document.getElementById('myPageBody');
+  const u=auth && auth.currentUser;
+  if(!u){
+    box.innerHTML='<p class="muted">로그인하면 내 정보를 바꿀 수 있어요.</p>';
+    const b=document.createElement('button'); b.className='btn primary'; b.textContent='로그인'; b.addEventListener('click', showLogin);
+    box.appendChild(b); return;
+  }
+  const hasPw=(u.providerData||[]).some(p=>p.providerId==='password');
+  box.innerHTML=`
+    <div class="my-card">
+      <div class="my-info">
+        <div>이메일: <b>${escapeHtml(u.email||'-')}</b></div>
+        <div>닉네임: <b>${escapeHtml(user.name||'-')}</b> ${isAdmin?'<span style="color:var(--gold)">👑 관리자</span>':''}</div>
+        <div>최고 점수: <b>${user.best}</b> · 코인: <b>${isAdmin?'∞':user.coins}</b></div>
+      </div>
+      <label>닉네임 변경</label>
+      <div class="my-row"><input id="myNick" maxlength="12" value="${escapeHtml(user.name||'')}" /><button class="btn cyan" id="myNickSave">저장</button></div>
+      ${hasPw?`
+      <label>비밀번호 변경 (6자 이상)</label>
+      <div class="my-row"><input id="myPw" type="password" placeholder="새 비밀번호" /><button class="btn cyan" id="myPwSave">변경</button></div>`
+      :`<p class="muted" style="margin-top:14px">구글로 로그인해서 비밀번호는 구글에서 관리돼요.</p>`}
+      <div style="margin-top:18px"><button class="btn" id="myLogout">로그아웃</button></div>
+    </div>`;
+  document.getElementById('myNickSave').addEventListener('click', ()=>{
+    const v=(document.getElementById('myNick').value||'').trim();
+    if(!v){ toast('닉네임을 입력하세요'); return; }
+    user.name=v; saveUser(); refreshHeader(); pushUserToCloud(); toast('닉네임을 바꿨어요'); renderMyPage();
+  });
+  if(hasPw){
+    document.getElementById('myPwSave').addEventListener('click', ()=>{
+      const np=document.getElementById('myPw').value||'';
+      if(np.length<6){ toast('비밀번호는 6자 이상이어야 해요'); return; }
+      u.updatePassword(np).then(()=>{ toast('비밀번호를 바꿨어요!'); document.getElementById('myPw').value=''; })
+        .catch(err=>{ if(err.code==='auth/requires-recent-login'){ toast('보안을 위해 다시 로그인한 뒤 시도해주세요'); doLogout(); } else toast(authMsg(err)); });
+    });
+  }
+  document.getElementById('myLogout').addEventListener('click', doLogout);
+}
+
+/* =========================================================================
+   [온라인 대전 로비] 만들어진 방을 네모(카드)로 보여주고 참가
+   ========================================================================= */
+let lobbyRef=null;
+function attachLobby(){
+  detachLobby();
+  if(!fbReady) return;
+  lobbyRef=db.ref('rooms');
+  lobbyRef.on('value', renderLobby);
+}
+function detachLobby(){ if(lobbyRef){ lobbyRef.off('value', renderLobby); lobbyRef=null; } }
+function renderLobby(snap){
+  const box=document.getElementById('lobbyList'); if(!box) return;
+  const rooms=[];
+  snap.forEach(ch=>{ const v=ch.val()||{}; const open=!v.p2 || v.p2.joined!==true;
+    if(open) rooms.push({code:ch.key, host:v.host||'익명', mine:!!(online && online.code===ch.key && online.me==='p1')}); });
+  box.innerHTML='';
+  if(!rooms.length){ box.innerHTML='<p class="muted">열린 방이 없어요. 방을 만들어보세요!</p>'; return; }
+  rooms.forEach(r=>{
+    const card=document.createElement('div'); card.className='auc-card lobby-card';
+    card.innerHTML=`<div class="ico">⚔️</div><h3>${escapeHtml(r.host)}님의 방</h3><div class="seller">코드 ${escapeHtml(r.code)}</div>`;
+    const btn=document.createElement('button');
+    if(r.mine){ btn.className='btn'; btn.textContent='내 방 (대기중)'; btn.disabled=true; }
+    else { btn.className='btn cyan'; btn.textContent='참가'; btn.addEventListener('click', ()=> joinRoom(r.code)); }
+    card.appendChild(btn); box.appendChild(card);
+  });
 }
 
 /* =========================================================================
@@ -1240,6 +1472,7 @@ function openPage(name){
   else if(name==='auction') attachAuction();
   else if(name==='versus') enterVersus();
   else if(name==='admin') renderAdmin();
+  else if(name==='mypage') renderMyPage();
 }
 
 /* =========================================================================
@@ -1256,10 +1489,6 @@ document.getElementById('vJoin').addEventListener('click', ()=>{
   joinRoom(code);
 });
 document.getElementById('vLeave').addEventListener('click', ()=> enterVersus());
-document.getElementById('admGive').addEventListener('click', ()=>{
-  const n=parseInt(document.getElementById('admCoin').value);
-  if(n>0){ addCoins(n); document.getElementById('admCoin').value=''; toast('🪙 '+n+' 지급했어요'); }
-});
 document.getElementById('admClearAuc').addEventListener('click', ()=>{
   if(fbReady) db.ref('auctions').remove().then(()=> toast('경매를 모두 정리했어요'));
 });
