@@ -220,6 +220,35 @@
   .lobby-title{margin:28px 0 12px; font-size:18px;}
   .lobby-card .seller{letter-spacing:.1em;}
 
+  /* 우편함 */
+  .mail-tabs{display:flex; gap:8px; margin-bottom:18px;}
+  .mail-tab{cursor:pointer; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); color:var(--txt); padding:9px 18px; border-radius:12px; font-weight:700; font-size:14px;}
+  .mail-tab.active{background:linear-gradient(90deg, rgba(255,46,136,.25), rgba(0,229,255,.18)); border-color:rgba(255,255,255,.25);}
+  .mail-item{display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px 16px; margin-bottom:8px; max-width:560px;}
+  .mail-from{font-weight:800; color:var(--cyan); min-width:80px;}
+  .mail-body{flex:1; font-size:14px;}
+  .mail-text{color:var(--muted); font-size:13px; margin-top:4px;}
+  .badge{display:inline-block; min-width:18px; height:18px; line-height:18px; text-align:center; background:var(--pink); color:#fff; border-radius:9px; font-size:11px; font-weight:800; padding:0 5px; margin-left:4px;}
+
+  /* 라이트(화이트) 모드 */
+  body.light{ --bg:#eef1f8; --bg2:#e3e7f2; --panel:#ffffff; --panel2:#f3f5fb;
+    --board:#e4e9f6; --cellbg:#cdd6ea; --line:#c2cbe2; --txt:#1a1d2b; --muted:#5b6478; }
+  body.light{ background:
+      radial-gradient(1100px 600px at 15% -10%, #dfe6ff 0%, transparent 55%),
+      radial-gradient(900px 600px at 110% 120%, #d6f0f5 0%, transparent 55%), var(--bg); }
+  body.light .nav{background:rgba(0,0,0,.04);}
+  body.light .nav:hover{background:rgba(0,0,0,.08);}
+  body.light .me,body.light .pill,body.light .shop-card,body.light .auc-card,body.light .rank-row,
+  body.light .my-card,body.light .admin-card,body.light .mail-item,body.light .mail-tab,
+  body.light .item-btn,body.light .tray{background:#fff; border-color:#dde3f0;}
+  body.light .btn{background:rgba(0,0,0,.05); border-color:#d3d9e8;}
+  body.light .modal{background:#fff; border-color:#dde3f0;}
+  body.light #overlayRoot:not(:empty){background:rgba(40,44,60,.45);}
+  body.light .versus-join input,body.light .auction-new input,body.light .auction-new select,
+  body.light .my-row input,body.light .adm-detail input,body.light .adm-detail select,body.light .modal input{background:#f4f6fc; color:var(--txt);}
+  body.light .board{box-shadow:inset 0 0 20px rgba(0,0,0,.08), 0 10px 30px rgba(0,0,0,.12);}
+  body.light .cell{box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);}
+
   /* 오버레이 / 토스트 */
   #overlayRoot:not(:empty){position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center;
     background:rgba(8,8,14,.78); backdrop-filter:blur(4px);}
@@ -276,10 +305,13 @@
       <button class="nav" data-page="rank">🏆 랭킹</button>
       <button class="nav" data-page="shop">🛒 상점</button>
       <button class="nav" data-page="auction">🔨 경매</button>
+      <button class="nav" data-page="mailbox" id="navMail">📬 우편함 <span id="mailBadge" class="badge hidden">0</span></button>
       <button class="nav" data-page="mypage">🙂 마이</button>
       <button class="nav hidden" id="navAdmin" data-page="admin">👑 관리자</button>
     </nav>
-    <div class="side-foot">최고 기록<br><b id="sideBest">0</b></div>
+    <div class="side-foot">최고 기록<br><b id="sideBest">0</b>
+      <br><button class="btn" id="themeBtn" style="margin-top:12px; font-size:12px; padding:7px 12px;">☀️ 화이트 모드</button>
+    </div>
   </aside>
 
   <!-- ===================== 본문 ===================== -->
@@ -359,6 +391,17 @@
       </div>
     </section>
 
+    <!-- 우편함 -->
+    <section class="page" id="page-mailbox">
+      <h1>📬 우편함</h1>
+      <div class="mail-tabs">
+        <button class="mail-tab active" data-mtab="inbox">수신함</button>
+        <button class="mail-tab" data-mtab="send">보내기</button>
+      </div>
+      <div id="mailInbox" class="mail-pane"></div>
+      <div id="mailSend" class="mail-pane hidden"></div>
+    </section>
+
     <!-- 마이페이지 -->
     <section class="page" id="page-mypage">
       <h1>🙂 마이페이지</h1>
@@ -407,9 +450,12 @@ const SHAPES = [
 
 // 상점/경매 아이템 정의
 const ITEMS = {
-  reroll:{name:'블록 리롤', icon:'🔄', price:80,  desc:'손에 든 블록 3개를 새로 받아요'},
-  hammer:{name:'망치',     icon:'🔨', price:120, desc:'보드 칸 1개를 부숴요'},
-  bomb:  {name:'폭탄',     icon:'💣', price:200, desc:'3x3 범위를 한 번에 부숴요'},
+  reroll:  {name:'블록 리롤',  icon:'🔄', price:80,  desc:'손에 든 블록 3개를 새로 받아요'},
+  hammer:  {name:'망치',      icon:'🔨', price:120, desc:'보드 칸 1개를 부숴요'},
+  bomb:    {name:'폭탄',      icon:'💣', price:200, desc:'3x3 범위를 부숴요'},
+  rowcol:  {name:'라인 클리어', icon:'➕', price:160, desc:'누른 칸의 가로줄+세로줄을 한 번에 부숴요'},
+  mega:    {name:'메가 폭탄',  icon:'🧨', price:320, desc:'5x5 범위를 한 번에 부숴요'},
+  clearall:{name:'전체 청소',  icon:'🧹', price:600, desc:'보드 전체를 깨끗이 비워요'},
 };
 
 // 코인 보상 (숫자가 작을수록 코인이 많이 들어와요)
@@ -507,22 +553,125 @@ function pushUserToCloud(){
   if(!fbReady) return;
   db.ref('users/'+user.id).update({ name:user.name||'', best:user.best, coins:user.coins, inv:user.inv });
 }
-// 우편함(경매 대금/관리자 지급) 수령 — 중복 수령 방지 잠금
-let collecting=false;
-function collectMailbox(){
-  if(!fbReady || collecting) return;
-  collecting=true;
+/* =========================================================================
+   [우편함] 메시지 기반 — 다른 사람에게 코인/아이템/메시지 보내고, 받아서 수령
+   ========================================================================= */
+// 우편 보내기
+function sendMail(toUid, payload){
+  if(!fbReady || !toUid) return Promise.resolve();
+  return db.ref('users/'+toUid+'/mailbox/messages').push({
+    fromName: payload.fromName||'시스템',
+    coins: payload.coins||0, item: payload.item||null, qty: payload.qty||0,
+    text: payload.text||'', ts: Date.now()
+  });
+}
+// 우편 개수 세기(배지용)
+function countMail(m){
+  if(!m) return 0; let n=0;
+  if(m.coins>0) n++;
+  if(m.items) n+=Object.keys(m.items).length;
+  if(m.messages) n+=Object.keys(m.messages).length;
+  return n;
+}
+let lastMailCount=-1;
+function updateMailBadge(n){
+  const b=document.getElementById('mailBadge'); if(!b) return;
+  if(n>0){ b.textContent = n>9?'9+':String(n); b.classList.remove('hidden'); }
+  else b.classList.add('hidden');
+}
+// 우편 1개 수령
+function claimMessage(id){
+  const ref=db.ref('users/'+user.id+'/mailbox/messages/'+id);
+  ref.once('value').then(s=>{ const msg=s.val(); if(!msg) return;
+    if(msg.coins) addCoins(msg.coins);
+    if(msg.item && msg.qty && ITEMS[msg.item]) addItem(msg.item, msg.qty);
+    ref.remove().then(()=> renderMailbox());
+  });
+}
+// 우편 전체 수령(예전 형식 coins/items 포함)
+function claimAllMail(){
+  if(!fbReady) return;
   const ref=db.ref('users/'+user.id+'/mailbox');
   ref.once('value').then(s=>{
-    const m=s.val();
+    const m=s.val(); if(!m){ toast('받을 우편이 없어요'); return; }
+    let gotCoins=0; const gotItems={};
+    if(m.coins>0) gotCoins+=m.coins;
+    if(m.items){ for(const k in m.items) gotItems[k]=(gotItems[k]||0)+(m.items[k]||0); }
+    if(m.messages){ for(const id in m.messages){ const msg=m.messages[id]; if(msg.coins) gotCoins+=msg.coins; if(msg.item&&msg.qty) gotItems[msg.item]=(gotItems[msg.item]||0)+msg.qty; } }
+    if(gotCoins) addCoins(gotCoins);
+    for(const k in gotItems){ if(ITEMS[k] && gotItems[k]>0) addItem(k, gotItems[k]); }
+    ref.remove().then(()=>{ toast('우편을 모두 받았어요!'); renderMailbox(); });
+  });
+}
+// 수신함 그리기
+function renderMailbox(){
+  const box=document.getElementById('mailInbox'); if(!box) return;
+  if(!fbReady){ box.innerHTML='<p class="muted">로그인하면 우편함을 쓸 수 있어요.</p>'; updateMailBadge(0); return; }
+  box.innerHTML='<p class="muted">불러오는 중...</p>';
+  db.ref('users/'+user.id+'/mailbox').once('value').then(s=>{
+    const m=s.val(); const list=[];
     if(m){
-      const msgs=[];
-      if(m.coins>0){ addCoins(m.coins); msgs.push('🪙'+m.coins); }
-      if(m.items){ for(const k of Object.keys(m.items)){ const n=m.items[k]||0; if(n>0 && ITEMS[k]){ addItem(k,n); msgs.push(ITEMS[k].icon+n); } } }
-      ref.remove();
-      if(msgs.length) toast('우편함 수령: '+msgs.join(' '));
+      if(m.coins>0) list.push({sys:true, fromName:'보관함', coins:m.coins});
+      if(m.items){ for(const k in m.items){ if(m.items[k]>0) list.push({sys:true, fromName:'보관함', item:k, qty:m.items[k]}); } }
+      if(m.messages){ for(const id in m.messages){ list.push(Object.assign({id}, m.messages[id])); } }
     }
-  }).catch(()=>{}).finally(()=>{ collecting=false; });
+    updateMailBadge(list.length); lastMailCount=list.length;
+    if(!list.length){ box.innerHTML='<p class="muted">받은 우편이 없어요.</p>'; return; }
+    box.innerHTML='';
+    const top=document.createElement('div'); top.style.marginBottom='12px';
+    const all=document.createElement('button'); all.className='btn green'; all.textContent='전체 받기';
+    all.addEventListener('click', claimAllMail); top.appendChild(all); box.appendChild(top);
+    list.forEach(it=>{
+      const card=document.createElement('div'); card.className='mail-item';
+      let body='';
+      if(it.coins) body+=`🪙 ${it.coins}  `;
+      if(it.item && ITEMS[it.item]) body+=`${ITEMS[it.item].icon} ${ITEMS[it.item].name} x${it.qty}  `;
+      if(it.text) body+=`<div class="mail-text">"${escapeHtml(it.text)}"</div>`;
+      card.innerHTML=`<div class="mail-from">${escapeHtml(it.fromName||'시스템')}</div><div class="mail-body">${body||'(빈 메일)'}</div>`;
+      if(it.id){ const b=document.createElement('button'); b.className='btn cyan'; b.textContent='받기'; b.addEventListener('click', ()=> claimMessage(it.id)); card.appendChild(b); }
+      box.appendChild(card);
+    });
+  });
+}
+// 보내기 화면 그리기
+function renderMailSend(){
+  const box=document.getElementById('mailSend'); if(!box) return;
+  if(!fbReady){ box.innerHTML='<p class="muted">로그인하면 우편을 보낼 수 있어요.</p>'; return; }
+  box.innerHTML='<p class="muted">받는 사람을 불러오는 중...</p>';
+  db.ref('users').once('value').then(snap=>{
+    const opts=[];
+    snap.forEach(ch=>{ const v=ch.val()||{}; if(ch.key!==user.id && v.name) opts.push({id:ch.key, name:v.name}); });
+    let optHtml = opts.length? opts.map(o=>`<option value="${o.id}">${escapeHtml(o.name)}</option>`).join('') : '<option value="">받을 사람이 없어요</option>';
+    const itemOpts = Object.keys(ITEMS).map(k=>`<option value="${k}">${ITEMS[k].icon} ${ITEMS[k].name} (보유 ${user.inv[k]||0})</option>`).join('');
+    box.innerHTML=`
+      <div class="my-card">
+        <label>받는 사람</label>
+        <select id="mailTo">${optHtml}</select>
+        <label>메시지 (선택)</label>
+        <input id="mailText" maxlength="60" placeholder="한마디 적기" />
+        <label>코인 보내기 (선택)</label>
+        <div class="my-row"><input id="mailCoin" type="number" min="0" placeholder="코인 수" /></div>
+        <label>아이템 보내기 (선택)</label>
+        <div class="my-row"><select id="mailItem">${itemOpts}</select><input id="mailQty" type="number" min="0" placeholder="개수" style="max-width:90px" /></div>
+        <div style="margin-top:16px"><button class="btn primary" id="mailSendBtn">보내기</button></div>
+      </div>`;
+    document.getElementById('mailSendBtn').addEventListener('click', doSendMail);
+  });
+}
+function doSendMail(){
+  const toUid=document.getElementById('mailTo').value;
+  if(!toUid){ toast('받는 사람을 선택하세요'); return; }
+  const text=(document.getElementById('mailText').value||'').trim();
+  const coin=parseInt(document.getElementById('mailCoin').value)||0;
+  const item=document.getElementById('mailItem').value;
+  const qty=parseInt(document.getElementById('mailQty').value)||0;
+  if(coin<0||qty<0){ toast('값이 이상해요'); return; }
+  if(coin>0){ if(!spendCoins(coin)){ toast('코인이 부족해요'); return; } }
+  if(qty>0){ if((user.inv[item]||0)<qty){ if(coin>0) addCoins(coin); toast('아이템이 부족해요'); return; } addItem(item,-qty); }
+  if(coin<=0 && qty<=0 && !text){ toast('보낼 내용을 적어주세요'); return; }
+  sendMail(toUid, { fromName:user.name||'익명', coins:coin, item:qty>0?item:null, qty:qty>0?qty:0, text });
+  toast('보냈어요! 📬');
+  renderMailSend();
 }
 
 // [실시간 동기화] 로그인하면 내 칸을 계속 지켜봐서, 구매/지급/관리자수정이 바로 반영됨
@@ -536,7 +685,11 @@ function attachSelfSync(){
 function detachSelfSync(){ if(selfRef){ selfRef.off(); selfRef=null; } }
 function applyCloudUser(d){
   if(!d) return;
-  if(d.mailbox && ((d.mailbox.coins||0)>0 || d.mailbox.items)){ collectMailbox(); return; }
+  // 우편함은 자동 수령하지 않고 배지만 갱신(직접 수신함에서 받기)
+  const mc=countMail(d.mailbox);
+  if(mc>lastMailCount && lastMailCount>=0) toast('📬 새 우편이 왔어요!');
+  lastMailCount=mc; updateMailBadge(mc);
+  const mb=document.getElementById('page-mailbox'); if(mb && mb.classList.contains('active')) renderMailbox();
   let changed=false;
   if(typeof d.coins==='number' && d.coins!==user.coins){ user.coins=d.coins; changed=true; }
   if(typeof d.best==='number' && d.best!==user.best){ user.best=d.best; changed=true; }
@@ -594,7 +747,7 @@ function finishLogin(u){
     const prov=(u.providerData && u.providerData[0] && u.providerData[0].providerId) || '';
     db.ref('users/'+user.id).update({ email:u.email||'', provider:prov });
   }
-  collectMailbox(); attachSelfSync(); refreshHeader();
+  attachSelfSync(); refreshHeader();
   if(!user.name) showNicknamePrompt(true);
   openPage('play');
   toast(isAdmin? '관리자로 로그인했어요 👑' : '로그인 완료!');
@@ -654,7 +807,7 @@ function doEmailSignup(){
 }
 function doGuest(){
   guestMode=true; hideOverlay();
-  if(fbReady){ pushUserToCloud(); collectMailbox(); }
+  if(fbReady){ pushUserToCloud(); }
   updateAuthLine();
   if(!user.name) showNicknamePrompt(true); else refreshHeader();
 }
@@ -762,11 +915,10 @@ function adminGrant(){
   const type=document.getElementById('admGiveType').value;
   const amt=parseInt(document.getElementById('admGiveAmt').value);
   if(!(amt>0)){ toast('수량을 입력하세요'); return; }
-  if(type==='coin') db.ref('users/'+admTarget+'/mailbox/coins').transaction(c=>(c||0)+amt);
-  else db.ref('users/'+admTarget+'/mailbox/items/'+type).transaction(c=>(c||0)+amt);
-  toast('지급 완료! 상대가 다음 접속 때 받아요');
+  if(type==='coin') sendMail(admTarget, { fromName:'관리자', coins:amt, text:'관리자 지급' });
+  else sendMail(admTarget, { fromName:'관리자', item:type, qty:amt, text:'관리자 지급' });
+  toast('지급 완료! 상대 우편함으로 보냈어요');
   document.getElementById('admGiveAmt').value='';
-  if(admTarget===user.id) collectMailbox(); // 나에게 지급이면 바로 수령
 }
 function adminToggleAdmin(){
   if(!admTarget) return;
@@ -897,11 +1049,27 @@ class BlockGame{
     if(this.itemMode==='hammer'){
       if(this.grid[r][c].state!=='empty'){ this.burst(new Set([r+'_'+c])); this.finishItem(); }
     } else if(this.itemMode==='bomb'){
+      this.burstArea(r,c,1); this.finishItem();
+    } else if(this.itemMode==='mega'){
+      this.burstArea(r,c,2); this.finishItem();
+    } else if(this.itemMode==='rowcol'){
       const set=new Set();
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ const rr=r+dr,cc=c+dc;
-        if(rr>=0&&cc>=0&&rr<SIZE&&cc<SIZE && this.grid[rr][cc].state==='fill') set.add(rr+'_'+cc); }
+      for(let i=0;i<SIZE;i++){ if(this.grid[r][i].state!=='empty') set.add(r+'_'+i); if(this.grid[i][c].state!=='empty') set.add(i+'_'+c); }
       this.burst(set); this.finishItem();
     }
+  }
+  // (cx,cy) 중심 사각 범위 부수기 (rad=1 → 3x3, rad=2 → 5x5)
+  burstArea(r,c,rad){
+    const set=new Set();
+    for(let dr=-rad;dr<=rad;dr++)for(let dc=-rad;dc<=rad;dc++){ const rr=r+dr,cc=c+dc;
+      if(rr>=0&&cc>=0&&rr<SIZE&&cc<SIZE && this.grid[rr][cc].state!=='empty') set.add(rr+'_'+cc); }
+    this.burst(set);
+  }
+  // 보드 전체 비우기
+  clearBoard(){
+    const set=new Set();
+    for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++) if(this.grid[r][c].state!=='empty') set.add(r+'_'+c);
+    this.burst(set);
   }
   enterItemMode(type){ this.itemMode=type; this.render(); }
   finishItem(){ this.itemMode=null; this.render(); if(this.opt.onItemUsed) this.opt.onItemUsed(); }
@@ -1027,9 +1195,9 @@ function closeToIdle(){ hideOverlay(); play.playing=false;
 // 막힘(놓을 곳 없음) 안내 — 아이템으로 살리거나 종료
 function showStuck(){
   const inv=user.inv;
-  const has = inv.reroll>0||inv.hammer>0||inv.bomb>0;
+  const has = Object.keys(ITEMS).some(k=>(inv[k]||0)>0);
   let itemBtns='';
-  for(const key of ['reroll','hammer','bomb']){
+  for(const key of Object.keys(ITEMS)){
     const c=inv[key]||0;
     itemBtns+=`<button class="btn ${c>0?'cyan':''}" ${c>0?'':'disabled'} onclick="useItemFromStuck('${key}')">${ITEMS[key].icon} ${ITEMS[key].name} (${c})</button>`;
   }
@@ -1048,8 +1216,10 @@ function useItem(key){
   if((user.inv[key]||0)<=0){ toast('아이템이 없어요'); if(play.stuckOpen) showStuck(); return; }
   if(key==='reroll'){
     addItem('reroll',-1); play.game.rerollTray(); renderItemBar(); afterItemUse();
+  } else if(key==='clearall'){
+    addItem('clearall',-1); play.game.clearBoard(); renderItemBar(); afterItemUse();
   } else {
-    // 망치/폭탄: 부술 칸을 클릭 → 성공 시 onItemUsed 콜백에서 차감
+    // 타겟형(망치/폭탄/라인/메가): 부술 칸을 클릭 → 성공 시 onItemUsed 콜백에서 차감
     play.pendingItem=key;
     play.game.enterItemMode(key);
     setHint(`부술 칸을 클릭하세요 — ${ITEMS[key].icon} ${ITEMS[key].name}`);
@@ -1069,10 +1239,11 @@ function setHint(t){ document.getElementById('playHint').textContent=t; }
 
 function renderItemBar(){
   const bar=document.getElementById('itemBar'); bar.innerHTML='';
-  for(const key of ['reroll','hammer','bomb']){
+  for(const key of Object.keys(ITEMS)){
     const c=user.inv[key]||0;
     const b=document.createElement('button'); b.className='item-btn'; if(c<=0) b.disabled=true;
-    b.innerHTML=`${ITEMS[key].icon} ${ITEMS[key].name} <span class="cnt">${c}</span>`;
+    b.innerHTML=`${ITEMS[key].icon} <span class="cnt">${c}</span>`;
+    b.title=ITEMS[key].name;
     b.addEventListener('click', ()=> useItem(key));
     bar.appendChild(b);
   }
@@ -1224,7 +1395,7 @@ function buyAuction(it){
     // 성공: 코인 지불 + 아이템 수령 + 판매자 우편함에 대금 적립
     spendCoins(it.price);
     addItem(it.item,1);
-    db.ref('users/'+it.sellerId+'/mailbox/coins').transaction(c=>(c||0)+it.price);
+    sendMail(it.sellerId, { fromName:'경매', coins:it.price, text:ITEMS[it.item].name+'(이)가 팔렸어요' });
     toast(`${ITEMS[it.item].name} 구매 완료! 🪙-${it.price}`);
     fillAucSelect();
   });
@@ -1262,6 +1433,7 @@ function track(ref,event,cb,bucket){ ref.on(event,cb); bucket.push({ref,event,cb
 function detach(bucket){ bucket.forEach(l=>l.ref.off(l.event,l.cb)); bucket.length=0; }
 
 function enterVersus(){
+  hideOverlay();
   cleanupVersus();
   document.getElementById('versusArena').classList.add('hidden');
   document.getElementById('versusConnect').classList.remove('hidden');
@@ -1289,11 +1461,13 @@ function hostRoom(){
   if(!fbReady) return;
   if(online) cleanupVersus();
   const code=makeRoomCode();
-  online={ db, code, roomRef:db.ref('rooms/'+code), me:'p1', opp:'p2', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0 };
-  online.roomRef.set({ createdAt:firebase.database.ServerValue.TIMESTAMP, round:0, host:(user.name||'익명'),
+  online={ db, code, roomRef:db.ref('rooms/'+code), me:'p1', opp:'p2', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0, pingTimer:null };
+  online.roomRef.set({ createdAt:firebase.database.ServerValue.TIMESTAMP, round:0, host:(user.name||'익명'), ping:Date.now(),
     p1:{joined:true,connected:true,score:0,over:false,rematch:false,grid:''},
     p2:{joined:false,connected:false,score:0,over:false,rematch:false,grid:''} }).then(()=>{
     online.roomRef.onDisconnect().remove();
+    // 하트비트: 방이 살아있는 동안 10초마다 신호 → 죽은 방(나간 사람 방)은 로비에서 자동 사라짐
+    online.pingTimer=setInterval(()=>{ if(online && online.roomRef && online.me==='p1') online.roomRef.child('ping').set(Date.now()); }, 10000);
     setVersusStatus(`<div class="roomcode">${code}</div>이 코드를 친구에게 알려주거나,<br>아래 '열린 방'에서 상대가 참가하면 시작돼요.`);
     track(online.roomRef.child('p2/joined'),'value', snap=>{
       if(snap.val()===true && online && online.me==='p1') online.roomRef.update({'p1/over':false,'p1/rematch':false,'p2/over':false,'p2/rematch':false, round:1});
@@ -1308,7 +1482,7 @@ function joinRoom(code){
   roomRef.once('value').then(snap=>{
     if(!snap.exists()){ setVersusStatus('그런 방 코드가 없어요.'); return; }
     const d=snap.val(); if(d.p2 && d.p2.joined){ setVersusStatus('이미 꽉 찬 방이에요.'); return; }
-    online={ db, code, roomRef, me:'p2', opp:'p1', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0 };
+    online={ db, code, roomRef, me:'p2', opp:'p1', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0, pingTimer:null };
     return roomRef.child('p2').update({joined:true,connected:true,score:0,over:false,rematch:false,grid:''}).then(()=>{
       roomRef.child('p2/connected').onDisconnect().set(false);
       setVersusStatus('연결됐어요! 곧 시작돼요...');
@@ -1327,6 +1501,7 @@ function attachRematchWatch(){
 }
 function startOnlineMatch(){
   hideOverlay(); detach(online.match);
+  if(online.pingTimer){ clearInterval(online.pingTimer); online.pingTimer=null; } // 대기방 신호 중단
   document.documentElement.style.setProperty('--cell','min(32px, 8.5vw)');
   document.getElementById('versusCode').textContent=online.code; showVersusArena();
   const arena=document.getElementById('versusBoards'); arena.innerHTML='';
@@ -1356,7 +1531,7 @@ function startOnlineMatch(){
   track(online.roomRef.child(online.opp+'/grid'),'value', s=>{ if(s.val()!=null) online.mirror.render(decodeGrid(s.val())); }, online.match);
   track(online.roomRef.child(online.opp+'/score'),'value', s=>{ oppScoreEl.textContent=s.val()||0; }, online.match);
   track(online.roomRef.child(online.opp+'/over'),'value', s=>{ if(s.val()===true && !online.finished) onlineResult(true); }, online.match);
-  track(online.roomRef.child(online.opp+'/connected'),'value', s=>{ if(s.val()===false && !online.finished) opponentLeft(); }, online.match);
+  track(online.roomRef.child(online.opp+'/connected'),'value', s=>{ const v=s.val(); if((v===false||v===null) && !online.finished) opponentLeft(); }, online.match);
   track(online.roomRef.child(online.me+'/incoming'),'child_added', s=>{ const v=s.val();
     if(v && v.lines && online.myGame && !online.finished){ online.myGame.addGarbage(v.lines); sendMyState(); } s.ref.remove(); }, online.match);
 }
@@ -1377,6 +1552,7 @@ function opponentLeft(){ online.finished=true;
 function cleanupVersus(){
   detachLobby();
   if(!online) return;
+  if(online.pingTimer){ clearInterval(online.pingTimer); online.pingTimer=null; }
   detach(online.match); detach(online.session);
   try{
     if(online.me==='p1' && online.roomRef){ online.roomRef.onDisconnect().cancel(); online.roomRef.remove(); }
@@ -1408,8 +1584,9 @@ function renderMyPage(){
       <label>닉네임 변경</label>
       <div class="my-row"><input id="myNick" maxlength="12" value="${escapeHtml(user.name||'')}" /><button class="btn cyan" id="myNickSave">저장</button></div>
       ${hasPw?`
-      <label>비밀번호 변경 (6자 이상)</label>
-      <div class="my-row"><input id="myPw" type="password" placeholder="새 비밀번호" /><button class="btn cyan" id="myPwSave">변경</button></div>`
+      <label>비밀번호 변경</label>
+      <div class="my-row"><input id="myPwCur" type="password" placeholder="현재 비밀번호" /></div>
+      <div class="my-row" style="margin-top:8px"><input id="myPw" type="password" placeholder="새 비밀번호 (6자 이상)" /><button class="btn cyan" id="myPwSave">변경</button></div>`
       :`<p class="muted" style="margin-top:14px">구글로 로그인해서 비밀번호는 구글에서 관리돼요.</p>`}
       <div style="margin-top:18px"><button class="btn" id="myLogout">로그아웃</button></div>
     </div>`;
@@ -1420,10 +1597,15 @@ function renderMyPage(){
   });
   if(hasPw){
     document.getElementById('myPwSave').addEventListener('click', ()=>{
+      const cur=document.getElementById('myPwCur').value||'';
       const np=document.getElementById('myPw').value||'';
-      if(np.length<6){ toast('비밀번호는 6자 이상이어야 해요'); return; }
-      u.updatePassword(np).then(()=>{ toast('비밀번호를 바꿨어요!'); document.getElementById('myPw').value=''; })
-        .catch(err=>{ if(err.code==='auth/requires-recent-login'){ toast('보안을 위해 다시 로그인한 뒤 시도해주세요'); doLogout(); } else toast(authMsg(err)); });
+      if(!cur){ toast('현재 비밀번호를 입력하세요'); return; }
+      if(np.length<6){ toast('새 비밀번호는 6자 이상이어야 해요'); return; }
+      const cred=firebase.auth.EmailAuthProvider.credential(u.email, cur);
+      u.reauthenticateWithCredential(cred)
+        .then(()=> u.updatePassword(np))
+        .then(()=>{ toast('비밀번호를 바꿨어요!'); document.getElementById('myPwCur').value=''; document.getElementById('myPw').value=''; })
+        .catch(err=> toast(authMsg(err)));
     });
   }
   document.getElementById('myLogout').addEventListener('click', doLogout);
@@ -1442,9 +1624,14 @@ function attachLobby(){
 function detachLobby(){ if(lobbyRef){ lobbyRef.off('value', renderLobby); lobbyRef=null; } }
 function renderLobby(snap){
   const box=document.getElementById('lobbyList'); if(!box) return;
-  const rooms=[];
-  snap.forEach(ch=>{ const v=ch.val()||{}; const open=!v.p2 || v.p2.joined!==true;
-    if(open) rooms.push({code:ch.key, host:v.host||'익명', mine:!!(online && online.code===ch.key && online.me==='p1')}); });
+  const now=Date.now(); const rooms=[];
+  snap.forEach(ch=>{ const v=ch.val()||{};
+    const open = !v.p2 || v.p2.joined!==true;
+    if(!open) return;
+    const last = v.ping || v.createdAt || 0;
+    if(now-last > 150000){ db.ref('rooms/'+ch.key).remove(); return; } // 2분 넘게 신호 없는 죽은 방 청소
+    if(now-last < 60000) rooms.push({ code:ch.key, host:v.host||'익명', mine:!!(online && online.code===ch.key && online.me==='p1') }); // 최근 1분 내 살아있는 방만 표시
+  });
   box.innerHTML='';
   if(!rooms.length){ box.innerHTML='<p class="muted">열린 방이 없어요. 방을 만들어보세요!</p>'; return; }
   rooms.forEach(r=>{
@@ -1461,6 +1648,7 @@ function renderLobby(snap){
    [페이지 전환]
    ========================================================================= */
 function openPage(name){
+  hideOverlay(); // 떠 있던 팝업(결과창 등) 닫기 — '나가기' 후에도 화면이 안 닫히던 문제 수정
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active', n.dataset.page===name));
   document.getElementById('page-'+name).classList.add('active');
@@ -1473,6 +1661,12 @@ function openPage(name){
   else if(name==='versus') enterVersus();
   else if(name==='admin') renderAdmin();
   else if(name==='mypage') renderMyPage();
+  else if(name==='mailbox'){
+    document.querySelectorAll('.mail-tab').forEach(x=>x.classList.toggle('active', x.dataset.mtab==='inbox'));
+    document.getElementById('mailInbox').classList.remove('hidden');
+    document.getElementById('mailSend').classList.add('hidden');
+    renderMailbox();
+  }
 }
 
 /* =========================================================================
@@ -1492,11 +1686,31 @@ document.getElementById('vLeave').addEventListener('click', ()=> enterVersus());
 document.getElementById('admClearAuc').addEventListener('click', ()=>{
   if(fbReady) db.ref('auctions').remove().then(()=> toast('경매를 모두 정리했어요'));
 });
+// 우편함 탭 전환
+document.querySelectorAll('.mail-tab').forEach(t=> t.addEventListener('click', ()=>{
+  document.querySelectorAll('.mail-tab').forEach(x=>x.classList.toggle('active', x===t));
+  const which=t.dataset.mtab;
+  document.getElementById('mailInbox').classList.toggle('hidden', which!=='inbox');
+  document.getElementById('mailSend').classList.toggle('hidden', which!=='send');
+  if(which==='inbox') renderMailbox(); else renderMailSend();
+}));
+// 다크/화이트 테마
+function applyTheme(){
+  let t='dark'; try{ t=localStorage.getItem('bb_theme')||'dark'; }catch(e){}
+  document.body.classList.toggle('light', t==='light');
+  const b=document.getElementById('themeBtn'); if(b) b.textContent = (t==='light') ? '🌙 다크 모드' : '☀️ 화이트 모드';
+}
+function toggleTheme(){
+  let cur='dark'; try{ cur=localStorage.getItem('bb_theme')||'dark'; localStorage.setItem('bb_theme', cur==='dark'?'light':'dark'); }catch(e){}
+  applyTheme();
+}
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
 window.addEventListener('resize', ()=>{
   if(play.game) play.game.renderTray();
   if(online && online.myGame) online.myGame.renderTray();
 });
 
+applyTheme();
 initFirebase();
 loadUser();
 refreshHeader();
