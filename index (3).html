@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>BLOCK BLASTER — 네온 퍼즐</title>
+<style>
+  /* =========================================================
+     [디자인 토큰] 네온 다크 모드
+     ========================================================= */
+  :root{
+    --bg:#1e1e24; --bg2:#16161b;
+    --panel:#23242f; --panel2:#1a1b24;
+    --board:#141a2e; --cellbg:#1b2238; --line:#2a3358;
+    --txt:#eaf0ff; --muted:#8b93b5;
+    --pink:#ff2e88; --cyan:#00e5ff; --green:#2bff88; --yellow:#ffe600; --purple:#b14bff; --orange:#ff8a2b;
+    --gold:#ffcf3a;
+    --cell:46px; --gap:4px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0;}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    color:var(--txt);
+    background:
+      radial-gradient(1100px 600px at 15% -10%, #2a2350 0%, transparent 55%),
+      radial-gradient(900px 600px at 110% 120%, #0c3a4a 0%, transparent 55%),
+      var(--bg);
+    overflow-x:hidden; user-select:none; -webkit-user-select:none;
+  }
+  .hidden{display:none !important;}
+  b{font-variant-numeric:tabular-nums;}
+
+  /* =========================================================
+     [레이아웃] 사이드바 + 본문
+     ========================================================= */
+  .layout{display:flex; min-height:100vh;}
+  .sidebar{
+    width:230px; flex-shrink:0; padding:22px 16px;
+    background:linear-gradient(180deg, var(--panel), var(--panel2));
+    border-right:1px solid rgba(255,255,255,.06);
+    display:flex; flex-direction:column; gap:18px;
+  }
+  .brand{font-weight:900; letter-spacing:.04em; line-height:1; font-size:26px;
+    background:linear-gradient(90deg,var(--pink),var(--cyan)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .brand span{display:block; color:var(--green); -webkit-text-fill-color:var(--green);}
+  .me{background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:12px 14px; font-size:14px;}
+  .me .coins{font-size:20px; font-weight:800; color:var(--gold);}
+  .me .nick{margin-top:8px; color:var(--muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .me .nick b{color:var(--txt);}
+  .mini-link{background:none; border:none; color:var(--cyan); cursor:pointer; font-size:12px; padding:0; text-decoration:underline;}
+  nav{display:flex; flex-direction:column; gap:8px;}
+  .nav{
+    text-align:left; cursor:pointer; border:1px solid transparent;
+    background:rgba(255,255,255,.03); color:var(--txt);
+    padding:12px 14px; border-radius:12px; font-size:15px; font-weight:700;
+    transition:background .15s, border-color .15s, transform .1s;
+  }
+  .nav:hover{background:rgba(255,255,255,.08);}
+  .nav.active{background:linear-gradient(90deg, rgba(255,46,136,.25), rgba(0,229,255,.18)); border-color:rgba(255,255,255,.22);}
+  .side-foot{margin-top:auto; color:var(--muted); font-size:13px; text-align:center; line-height:1.7;}
+  .side-foot b{color:var(--gold); font-size:22px;}
+
+  .content{flex:1; padding:26px 24px; min-width:0;}
+  .page{display:none;}
+  .page.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);}to{opacity:1; transform:none;}}
+  .page h1{margin:0 0 6px; font-size:26px; letter-spacing:.02em;}
+  .page .muted{color:var(--muted); margin:0 0 20px; font-size:14px;}
+
+  /* 버튼 공통 */
+  .btn{cursor:pointer; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); color:var(--txt);
+    padding:9px 16px; border-radius:12px; font-weight:700; font-size:14px; transition:background .15s, transform .1s;}
+  .btn:hover{background:rgba(255,255,255,.12);} .btn:active{transform:scale(.96);}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  .btn.primary{background:linear-gradient(90deg,var(--pink),var(--purple)); border:none; color:#fff;}
+  .btn.cyan{background:linear-gradient(90deg,var(--cyan),#0091ff); border:none; color:#04121a;}
+  .btn.green{background:linear-gradient(90deg,var(--green),#13b86a); border:none; color:#04140b;}
+  .btn.big{font-size:18px; padding:14px 28px;}
+
+  .pill{background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px 16px; font-size:13px; text-align:center; color:var(--muted);}
+  .pill b{display:block; font-size:22px; color:var(--txt); margin-top:2px;}
+
+  /* =========================================================
+     [게임 영역]
+     ========================================================= */
+  .play-head{display:flex; gap:12px; justify-content:center; margin-bottom:16px;}
+  .board-host{display:flex; justify-content:center;}
+  .board{
+    display:grid; grid-template-columns:repeat(8, var(--cell)); grid-template-rows:repeat(8, var(--cell));
+    gap:var(--gap); padding:var(--gap); background:var(--board); border:1px solid var(--line); border-radius:16px;
+    box-shadow:inset 0 0 30px rgba(0,0,0,.45), 0 10px 40px rgba(0,0,0,.4); touch-action:none;
+  }
+  .cell{width:var(--cell); height:var(--cell); background:var(--cellbg); border-radius:7px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03); transition:transform .08s;}
+  .cell.fill{box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+  .cell.valid{outline:2px solid rgba(43,255,136,.9); outline-offset:-2px; background:rgba(43,255,136,.18);}
+  .cell.invalid{outline:2px solid rgba(255,46,136,.8); outline-offset:-2px;}
+  .cell.target{outline:2px dashed var(--yellow); outline-offset:-2px; cursor:pointer;}
+  .cell.pop{animation:pop .35s ease;}
+  @keyframes pop{0%{transform:scale(1.18); box-shadow:0 0 22px 6px rgba(255,255,255,.85);}100%{transform:scale(1); box-shadow:none;}}
+
+  .tray{display:flex; gap:14px; align-items:center; justify-content:center; min-height:calc(var(--cell)*2.4);
+    padding:10px 14px; flex-wrap:wrap; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06);
+    border-radius:14px; margin-top:14px;}
+  .tray-slot{display:grid; gap:3px; cursor:grab; transition:transform .12s;}
+  .tray-slot:hover{transform:scale(1.06);}
+  .tray-slot.used{opacity:.18; pointer-events:none; transform:scale(.85);}
+  .mini{width:var(--mini); height:var(--mini); border-radius:5px;}
+  .mini.empty{background:transparent;}
+
+  .item-bar{display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;}
+  .item-btn{display:flex; align-items:center; gap:6px; cursor:pointer; border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.25); color:var(--txt); padding:8px 12px; border-radius:12px; font-size:14px; font-weight:700;}
+  .item-btn:hover{background:rgba(255,255,255,.1);}
+  .item-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .item-btn .cnt{color:var(--gold);}
+  .play-hint{text-align:center; color:var(--yellow); min-height:22px; margin-top:10px; font-size:14px;}
+  .idle-box{text-align:center; margin-top:30px;}
+
+  .ghost{position:fixed; z-index:9999; pointer-events:none; left:0; top:0;}
+  .ghost .gc{position:absolute; border-radius:7px;}
+  #fx{position:fixed; inset:0; pointer-events:none; z-index:9998; overflow:hidden;}
+  .particle{position:fixed; width:9px; height:9px; border-radius:2px; will-change:transform,opacity;}
+
+  /* =========================================================
+     [랭킹 / 상점 / 경매]
+     ========================================================= */
+  .rank-list{display:flex; flex-direction:column; gap:8px; max-width:560px;}
+  .rank-row{display:flex; align-items:center; gap:14px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+    border-radius:12px; padding:12px 16px;}
+  .rank-row.me{border-color:var(--cyan); background:rgba(0,229,255,.08);}
+  .rank-no{font-weight:900; font-size:20px; width:34px; text-align:center; color:var(--muted);}
+  .rank-row:nth-child(1) .rank-no{color:var(--gold);}
+  .rank-name{flex:1; font-weight:700;}
+  .rank-score{font-weight:900; color:var(--green); font-variant-numeric:tabular-nums;}
+
+  .shop-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:14px; max-width:760px; margin-bottom:26px;}
+  .shop-card{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px; text-align:center;}
+  .shop-card .ico{font-size:40px;}
+  .shop-card h3{margin:8px 0 4px; font-size:18px;}
+  .shop-card p{margin:0 0 12px; color:var(--muted); font-size:13px; line-height:1.5; min-height:38px;}
+  .shop-card .price{color:var(--gold); font-weight:800; margin-bottom:10px;}
+  .shop-card .owned{color:var(--cyan); font-size:13px; margin-bottom:10px;}
+
+  .auction-new{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; max-width:560px;}
+  .auction-new select, .auction-new input{padding:11px 14px; border-radius:12px; background:rgba(0,0,0,.3);
+    border:1px solid rgba(255,255,255,.14); color:var(--txt); font-size:14px; outline:none;}
+  .auction-new input{width:140px;}
+  .auction-new select:focus, .auction-new input:focus{border-color:var(--cyan);}
+  .auction-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:14px; max-width:900px;}
+  .auc-card{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px; text-align:center;}
+  .auc-card.mine{border-color:var(--purple);}
+  .auc-card .ico{font-size:36px;}
+  .auc-card h3{margin:6px 0 2px; font-size:16px;}
+  .auc-card .seller{color:var(--muted); font-size:12px; margin-bottom:8px;}
+  .auc-card .price{color:var(--gold); font-weight:800; margin-bottom:10px;}
+
+  /* 멋진 시작 화면(히어로) */
+  .hero{max-width:480px; margin:6px auto; text-align:center;}
+  .hero-logo{font-weight:900; font-size:48px; line-height:1; letter-spacing:.04em;
+    background:linear-gradient(90deg,var(--pink),var(--cyan),var(--green)); -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:hue 6s linear infinite; filter:drop-shadow(0 4px 18px rgba(0,229,255,.25));}
+  .hero-logo span{display:block; -webkit-text-fill-color:var(--yellow); color:var(--yellow); font-size:30px; margin-top:2px;}
+  @keyframes hue{from{filter:hue-rotate(0) drop-shadow(0 4px 18px rgba(0,229,255,.25));}to{filter:hue-rotate(360deg) drop-shadow(0 4px 18px rgba(0,229,255,.25));}}
+  .hero-blocks{display:flex; gap:9px; justify-content:center; margin:22px 0;}
+  .hero-blocks i{width:28px; height:28px; border-radius:7px; display:block; animation:floaty 2.2s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+  .hero-best{display:inline-block; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.1); border-radius:999px;
+    padding:8px 20px; color:var(--muted); font-size:14px; margin-bottom:16px;}
+  .hero-best b{color:var(--gold); font-size:19px;}
+  .hero-tip{color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:24px;}
+  .pulse{animation:pulse 1.7s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,46,136,.55);}50%{box-shadow:0 0 0 14px rgba(255,46,136,0);}}
+
+  /* 온라인 대전 */
+  .cell.garbage{background:#39405e; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+  #versusConnect{text-align:center; max-width:440px; margin:10px auto;}
+  .versus-status{color:var(--muted); margin-bottom:18px; min-height:24px; line-height:1.6;}
+  .versus-status .roomcode{font-size:42px; font-weight:900; letter-spacing:.3em; color:var(--gold); margin-bottom:10px;}
+  .versus-join{display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;}
+  .versus-join input{padding:11px 14px; border-radius:12px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.14);
+    color:var(--txt); font-size:18px; width:170px; text-align:center; letter-spacing:.25em; text-transform:uppercase; outline:none;}
+  .versus-join input:focus{border-color:var(--cyan);}
+  .versus-top{display:flex; gap:14px; align-items:center; justify-content:center; margin-bottom:18px;}
+  .versus-top b{color:var(--gold); letter-spacing:.25em; font-size:22px;}
+  .arena{display:flex; gap:20px; align-items:flex-start; justify-content:center; flex-wrap:wrap;}
+  .panel{display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .panel .name{font-weight:800; letter-spacing:.05em;}
+  .panel.p1 .name{color:var(--cyan);} .panel.p2 .name{color:var(--pink);}
+  .panel .score{color:var(--muted); font-size:14px;} .panel .score b{color:var(--txt); font-size:18px;}
+  .readonly-tag{font-size:11px; color:var(--muted);}
+  .vs-divider{align-self:center; font-weight:900; font-size:26px; color:var(--yellow); text-shadow:0 0 14px var(--yellow);}
+
+  /* 로그인 / 관리자 */
+  .auth-line{margin-top:10px; font-size:12px; color:var(--muted); word-break:break-all; line-height:1.6;}
+  .admin-tools{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:24px;}
+  .admin-card{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px; min-width:210px;}
+  .admin-card h3{margin:0 0 12px; font-size:15px;}
+  .admin-card input{padding:9px 12px; border-radius:10px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.14); color:var(--txt); width:120px; margin-right:8px; outline:none;}
+  .admin-card input:focus{border-color:var(--cyan);}
+  .login-google{width:100%; margin-bottom:6px;}
+  .login-divider{height:1px; background:rgba(255,255,255,.12); margin:16px 0;}
+
+  /* 오버레이 / 토스트 */
+  #overlayRoot:not(:empty){position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center;
+    background:rgba(8,8,14,.78); backdrop-filter:blur(4px);}
+  .modal{background:linear-gradient(180deg,#22243a,#14152099); border:1px solid rgba(255,255,255,.14); border-radius:22px;
+    padding:34px 32px; text-align:center; max-width:440px; width:90%; box-shadow:0 30px 80px rgba(0,0,0,.6);
+    animation:pofu .35s cubic-bezier(.2,1.3,.4,1);}
+  @keyframes pofu{from{transform:scale(.8); opacity:0;}to{transform:scale(1); opacity:1;}}
+  .modal .big{font-size:30px; font-weight:900; margin:0 0 8px;}
+  .modal .desc{color:var(--muted); line-height:1.7; margin:0 0 22px; font-size:15px;}
+  .modal .desc b{color:var(--txt);}
+  .modal .btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap;}
+  .modal input{width:100%; padding:12px 14px; border-radius:12px; background:rgba(0,0,0,.3);
+    border:1px solid rgba(255,255,255,.14); color:var(--txt); font-size:16px; outline:none; margin-bottom:18px; text-align:center;}
+  .confetti{font-size:46px; margin-bottom:4px;}
+  .modal .row-items{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:18px;}
+
+  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:10001;
+    background:rgba(20,22,34,.96); border:1px solid rgba(255,255,255,.16); color:var(--txt);
+    padding:12px 20px; border-radius:12px; font-size:14px; font-weight:700; opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+
+  /* 반응형: 좁으면 사이드바를 위쪽 가로 메뉴로 */
+  @media (max-width:760px){
+    .layout{flex-direction:column;}
+    .sidebar{width:100%; flex-direction:row; align-items:center; gap:12px; overflow-x:auto; padding:12px;}
+    .brand{font-size:18px;} .brand span{display:inline; margin-left:4px;}
+    .me{flex-shrink:0;} nav{flex-direction:row; flex-shrink:0;}
+    .nav{padding:10px 12px; font-size:13px; white-space:nowrap;}
+    .side-foot{margin:0; white-space:nowrap;}
+    .content{padding:18px 14px;}
+  }
+</style>
+<!-- Firebase SDK (랭킹/경매용) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+<div id="fx"></div>
+
+<div class="layout">
+  <!-- ===================== 사이드바 ===================== -->
+  <aside class="sidebar">
+    <div class="brand">BLOCK<span>BLASTER</span></div>
+    <div class="me">
+      <div class="coins">🪙 <b id="coinBal">0</b></div>
+      <div class="nick">👤 <b id="nickName">-</b> <button class="mini-link" id="editNick">변경</button></div>
+      <div class="auth-line" id="authLine"></div>
+    </div>
+    <nav>
+      <button class="nav active" data-page="play">🎮 게임</button>
+      <button class="nav" data-page="versus">⚔️ 대전</button>
+      <button class="nav" data-page="rank">🏆 랭킹</button>
+      <button class="nav" data-page="shop">🛒 상점</button>
+      <button class="nav" data-page="auction">🔨 경매</button>
+      <button class="nav hidden" id="navAdmin" data-page="admin">👑 관리자</button>
+    </nav>
+    <div class="side-foot">최고 기록<br><b id="sideBest">0</b></div>
+  </aside>
+
+  <!-- ===================== 본문 ===================== -->
+  <main class="content">
+    <!-- 게임 -->
+    <section class="page active" id="page-play">
+      <div class="play-head">
+        <div class="pill">점수<b id="curScore">0</b></div>
+        <div class="pill">최고<b id="curBest">0</b></div>
+      </div>
+      <div id="boardHost" class="board-host"></div>
+      <div id="itemBar" class="item-bar hidden"></div>
+      <div id="playHint" class="play-hint"></div>
+      <div id="idleBox" class="idle-box">
+        <div class="hero">
+          <div class="hero-logo">BLOCK<span>BLASTER</span></div>
+          <div class="hero-blocks">
+            <i style="background:#ff2e88; animation-delay:0s"></i>
+            <i style="background:#00e5ff; animation-delay:.12s"></i>
+            <i style="background:#2bff88; animation-delay:.24s"></i>
+            <i style="background:#ffe600; animation-delay:.36s"></i>
+            <i style="background:#b14bff; animation-delay:.48s"></i>
+          </div>
+          <div class="hero-best">🏆 최고 기록 <b id="heroBest">0</b></div>
+          <p class="hero-tip">블록을 끌어다 놓아 가로·세로 줄을 깨고,<br>막힐 때까지 최고 점수에 도전하세요!</p>
+          <button class="btn primary big pulse" id="btnStart">▶ 게임 시작</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 랭킹 -->
+    <section class="page" id="page-rank">
+      <h1>🏆 랭킹</h1>
+      <p class="muted">전 세계 플레이어들의 최고 점수 순위예요.</p>
+      <div id="rankList" class="rank-list"></div>
+    </section>
+
+    <!-- 상점 -->
+    <section class="page" id="page-shop">
+      <h1>🛒 상점</h1>
+      <p class="muted">게임에서 번 코인으로 아이템을 사서 더 높은 점수에 도전하세요.</p>
+      <div id="shopList" class="shop-grid"></div>
+      <h2 style="font-size:20px; margin:0 0 12px;">내 아이템</h2>
+      <div id="invList" class="shop-grid"></div>
+    </section>
+
+    <!-- 경매 -->
+    <section class="page" id="page-auction">
+      <h1>🔨 경매장</h1>
+      <p class="muted">참가자들이 내놓은 아이템을 코인으로 즉시 구매할 수 있어요. 내 아이템도 팔 수 있어요!</p>
+      <div class="auction-new">
+        <select id="aucItem"></select>
+        <input id="aucPrice" type="number" min="1" placeholder="가격(코인)" />
+        <button class="btn cyan" id="aucPost">내놓기</button>
+      </div>
+      <div id="aucList" class="auction-list"></div>
+    </section>
+
+    <!-- 온라인 대전 -->
+    <section class="page" id="page-versus">
+      <h1>⚔️ 온라인 대전</h1>
+      <p class="muted">친구와 1:1 실시간 대결! 2줄 이상 깨면 상대 보드에 방해 블록이 날아가요.</p>
+      <div id="versusConnect">
+        <p id="versusStatus" class="versus-status"></p>
+        <button class="btn primary big" id="vHost">방 만들기</button>
+        <div class="versus-join">
+          <input id="vCode" maxlength="4" placeholder="방 코드" />
+          <button class="btn cyan" id="vJoin">코드로 참가</button>
+        </div>
+      </div>
+      <div id="versusArena" class="hidden">
+        <div class="versus-top">방 코드 <b id="versusCode">----</b>
+          <button class="btn" id="vLeave">나가기</button></div>
+        <div id="versusBoards" class="arena"></div>
+      </div>
+    </section>
+
+    <!-- 관리자 -->
+    <section class="page" id="page-admin">
+      <h1>👑 관리자</h1>
+      <p class="muted">관리자 전용 도구예요. 신중히 사용하세요.</p>
+      <div class="admin-tools">
+        <div class="admin-card">
+          <h3>🪙 코인 지급 (나에게)</h3>
+          <input id="admCoin" type="number" min="1" placeholder="코인 수" />
+          <button class="btn green" id="admGive">지급</button>
+        </div>
+        <div class="admin-card">
+          <h3>🔨 경매 정리</h3>
+          <button class="btn" id="admClearAuc">모든 매물 삭제</button>
+        </div>
+      </div>
+      <h2 style="font-size:20px; margin:0 0 12px;">플레이어 목록</h2>
+      <div id="admUsers" class="rank-list"></div>
+    </section>
+  </main>
+</div>
+
+<div id="overlayRoot"></div>
+<div id="toast"></div>
+
+<script>
+/* =========================================================================
+   [기본 설정]
+   ========================================================================= */
+const SIZE = 8;
+const COLORS = ['#ff2e88','#00e5ff','#2bff88','#ffe600','#b14bff','#ff8a2b'];
+
+// 블록 모양들(좌상단 0,0 기준 정규화). 작은 블록은 가중치로 한 번 더 넣음.
+const SHAPES = [
+  [[0,0]],[[0,0]],
+  [[0,0],[0,1]],[[0,0],[1,0]],
+  [[0,0],[0,1],[0,2]],[[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],
+  [[0,0],[0,1],[1,0],[1,1]],
+  [[0,0],[0,1],[1,0]],[[0,0],[0,1],[1,1]],[[0,1],[1,0],[1,1]],[[0,0],[1,0],[1,1]],
+  [[0,0],[1,0],[2,0],[2,1]],[[0,1],[1,1],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,1]],[[1,0],[1,1],[1,2],[0,1]],
+  [[0,1],[0,2],[1,0],[1,1]],[[0,0],[0,1],[1,1],[1,2]],
+];
+
+// 상점/경매 아이템 정의
+const ITEMS = {
+  reroll:{name:'블록 리롤', icon:'🔄', price:80,  desc:'손에 든 블록 3개를 새로 받아요'},
+  hammer:{name:'망치',     icon:'🔨', price:120, desc:'보드 칸 1개를 부숴요'},
+  bomb:  {name:'폭탄',     icon:'💣', price:200, desc:'3x3 범위를 한 번에 부숴요'},
+};
+
+// 코인 보상 (숫자가 작을수록 코인이 많이 들어와요)
+const COIN_PER = 20;       // 점수 20점당 코인 1개 (기존 100점당 1개 → 5배 더 많이!)
+const RECORD_BONUS = 50;   // 신기록을 세우면 보너스 코인
+
+// ▼▼▼ 관리자 계정: 여기에 본인 로그인 이메일을 넣으면 그 계정이 관리자가 돼요 ▼▼▼
+const ADMIN_EMAILS = [
+  // "내이메일@gmail.com",
+];
+// ▲▲▲ 여러 명도 가능: "a@x.com","b@y.com" 처럼 쉼표로 추가 ▲▲▲
+
+function makeGrid(){const g=[];for(let r=0;r<SIZE;r++){const row=[];for(let c=0;c<SIZE;c++)row.push({state:'empty',color:null});g.push(row);}return g;}
+function randInt(n){return Math.floor(Math.random()*n);}
+function randColor(){return COLORS[randInt(COLORS.length)];}
+function randomBlock(){const s=SHAPES[randInt(SHAPES.length)];return{cells:s.map(p=>p.slice()),color:randColor()};}
+
+// [대전] 보드를 64글자 문자열로 압축/복원 (.=빈칸 *=방해 0~5=색)
+function encodeGrid(grid){
+  let s='';
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){ const d=grid[r][c];
+    if(d.state==='empty') s+='.';
+    else if(d.state==='garbage') s+='*';
+    else { const i=COLORS.indexOf(d.color); s+=(i<0?'0':String(i)); } }
+  return s;
+}
+function decodeGrid(s){
+  const g=makeGrid(); s=s||'';
+  for(let i=0;i<SIZE*SIZE;i++){ const ch=s[i]||'.'; const r=Math.floor(i/SIZE), c=i%SIZE;
+    if(ch==='*') g[r][c]={state:'garbage',color:null};
+    else if(ch==='.') g[r][c]={state:'empty',color:null};
+    else g[r][c]={state:'fill', color:COLORS[parseInt(ch)]||COLORS[0]}; }
+  return g;
+}
+
+/* =========================================================================
+   [유저 데이터 + 코인 경제]
+   - 내 코인/아이템/최고기록은 localStorage(내 기기)에 저장 → 오프라인도 OK.
+   - Firebase가 켜지면 랭킹에 점수를 올리고, 경매(다른 사람과 거래)를 쓸 수 있다.
+   - 경매 판매 대금은 Firebase '우편함(mailbox)'으로 받아서 다음 접속 때 수령.
+   ========================================================================= */
+let user = null; // {id, name, coins, inv:{reroll,hammer,bomb}, best}
+
+function loadUser(){
+  let raw=null; try{ raw=localStorage.getItem('bb_user'); }catch(e){}
+  if(raw){ try{ user=JSON.parse(raw); }catch(e){ user=null; } }
+  if(!user){
+    user={ id:'u'+Date.now().toString(36)+randInt(9999), name:'', coins:0, inv:{reroll:0,hammer:0,bomb:0}, best:0 };
+  }
+  if(!user.inv) user.inv={reroll:0,hammer:0,bomb:0};
+}
+function saveUser(){ try{ localStorage.setItem('bb_user', JSON.stringify(user)); }catch(e){} }
+
+function addCoins(n){ user.coins+=n; saveUser(); refreshHeader(); pushUserToCloud(); }
+function spendCoins(n){ if(user.coins<n) return false; user.coins-=n; saveUser(); refreshHeader(); pushUserToCloud(); return true; }
+function addItem(key,n){ user.inv[key]=(user.inv[key]||0)+n; if(user.inv[key]<0)user.inv[key]=0; saveUser(); refreshHeader(); }
+function setBest(s){ if(s>user.best){ user.best=s; saveUser(); refreshHeader(); pushUserToCloud(); return true; } return false; }
+
+function refreshHeader(){
+  document.getElementById('coinBal').textContent=user.coins;
+  document.getElementById('nickName').textContent=user.name||'-';
+  document.getElementById('sideBest').textContent=user.best;
+  document.getElementById('curBest').textContent=user.best;
+  const hb=document.getElementById('heroBest'); if(hb) hb.textContent=user.best;
+}
+
+/* =========================================================================
+   [Firebase] 랭킹 + 경매용 (설정 안 하면 자동으로 비활성화)
+   ========================================================================= */
+// ▼▼▼ 본인 Firebase 설정 (랭킹/경매/대전용) — 이미 채워져 있어요 ▼▼▼
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCw7Vnt4n1Z4rzN4Hk3CEs7MDCS4LidpVo",
+  authDomain: "project-8fc4f993-9e84-498e-893.firebaseapp.com",
+  databaseURL: "https://project-8fc4f993-9e84-498e-893-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "project-8fc4f993-9e84-498e-893",
+  storageBucket: "project-8fc4f993-9e84-498e-893.firebasestorage.app",
+  messagingSenderId: "558724074920",
+  appId: "1:558724074920:web:fa71c3eb86f5d1a785a19d",
+  measurementId: "G-92P7PCXEQT"
+};
+// ▲▲▲ 여기까지 ▲▲▲
+
+let fbReady=false, db=null, auth=null, isAdmin=false, guestMode=false;
+function initFirebase(){
+  if(typeof firebase==='undefined') return;
+  if(String(FIREBASE_CONFIG.apiKey).indexOf('YOUR_')===0) return; // 설정 안 함 → 비활성
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database(); fbReady=true;
+    try{ auth=firebase.auth(); }catch(e){ auth=null; }
+  }catch(e){ fbReady=false; }
+}
+// 내 정보(이름/최고점/코인/아이템)를 랭킹·동기화용으로 올림
+function pushUserToCloud(){
+  if(!fbReady || !user.name) return;
+  db.ref('users/'+user.id).update({ name:user.name, best:user.best, coins:user.coins, inv:user.inv });
+}
+// 경매로 받은 판매 대금(우편함) 수령
+function collectMailbox(){
+  if(!fbReady) return;
+  const ref=db.ref('users/'+user.id+'/mailbox/coins');
+  ref.once('value').then(s=>{
+    const c=s.val()||0;
+    if(c>0){ ref.set(0); addCoins(c); toast('경매 판매 대금 🪙'+c+' 수령!'); }
+  }).catch(()=>{});
+}
+
+/* =========================================================================
+   [로그인] 구글 / 이메일 (Firebase Auth)
+   ========================================================================= */
+function handleAuth(u){
+  if(u){ guestMode=false; onLoggedIn(u); }
+  else { if(!guestMode) showLogin(); }
+}
+function onLoggedIn(u){
+  user.id=u.uid;
+  loadCloudUser().then(d=>{
+    const emailAdmin = ADMIN_EMAILS.map(e=>e.toLowerCase()).includes((u.email||'').toLowerCase());
+    const cloudAdmin = !!(d && d.admin===true); // Firebase에서 켠 관리자 표시
+    isAdmin = emailAdmin || cloudAdmin;
+    finishLogin(u);
+  });
+}
+// 클라우드에 저장된 내 계정 데이터 불러오기(있으면 그걸 사용)
+function loadCloudUser(){
+  return db.ref('users/'+user.id).once('value').then(s=>{
+    const d=s.val();
+    if(d){
+      if(typeof d.coins==='number') user.coins=d.coins;
+      if(typeof d.best==='number')  user.best=d.best;
+      if(d.inv)  user.inv=Object.assign({reroll:0,hammer:0,bomb:0}, d.inv);
+      if(d.name) user.name=d.name;
+    }
+    saveUser(); refreshHeader();
+    return d; // 관리자 표시(admin) 등 확인용으로 돌려줌
+  }).catch(()=> null);
+}
+function finishLogin(u){
+  hideOverlay();
+  if(!user.name && u.displayName){ user.name=u.displayName; saveUser(); }
+  updateAuthLine();
+  document.getElementById('navAdmin').classList.toggle('hidden', !isAdmin);
+  pushUserToCloud(); collectMailbox(); refreshHeader();
+  if(!user.name) showNicknamePrompt(true);
+  openPage('play');
+  toast(isAdmin? '관리자로 로그인했어요 👑' : '로그인 완료!');
+}
+function showLogin(){
+  showOverlay(`
+    <div class="confetti">🎮</div>
+    <p class="big">로그인</p>
+    <p class="desc">기록을 저장하고 랭킹·대전을 즐기려면 로그인하세요.</p>
+    <button class="btn primary login-google" onclick="doGoogleLogin()">🔵 Google로 로그인</button>
+    <div class="login-divider"></div>
+    <input id="loginEmail" type="email" placeholder="이메일" />
+    <input id="loginPw" type="password" placeholder="비밀번호 (6자 이상)" />
+    <div class="btns">
+      <button class="btn cyan" onclick="doEmailLogin()">이메일 로그인</button>
+      <button class="btn" onclick="doEmailSignup()">회원가입</button>
+    </div>
+    <button class="mini-link" style="margin-top:16px" onclick="doGuest()">로그인 없이 게스트로 플레이</button>`);
+}
+function doGoogleLogin(){
+  if(!auth) return toast('로그인 기능이 꺼져 있어요');
+  const p=new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(p).catch(e=> toast(authMsg(e)));
+}
+function doEmailLogin(){
+  if(!auth) return;
+  const e=(document.getElementById('loginEmail').value||'').trim();
+  const pw=document.getElementById('loginPw').value||'';
+  auth.signInWithEmailAndPassword(e,pw).catch(err=> toast(authMsg(err)));
+}
+function doEmailSignup(){
+  if(!auth) return;
+  const e=(document.getElementById('loginEmail').value||'').trim();
+  const pw=document.getElementById('loginPw').value||'';
+  auth.createUserWithEmailAndPassword(e,pw).catch(err=> toast(authMsg(err)));
+}
+function doGuest(){
+  guestMode=true; hideOverlay();
+  if(fbReady){ pushUserToCloud(); collectMailbox(); }
+  updateAuthLine();
+  if(!user.name) showNicknamePrompt(true); else refreshHeader();
+}
+function doLogout(){
+  isAdmin=false; document.getElementById('navAdmin').classList.add('hidden');
+  guestMode=false;
+  if(auth && auth.currentUser){ auth.signOut(); } // → handleAuth(null) → showLogin
+  else showLogin();
+}
+function updateAuthLine(){
+  const el=document.getElementById('authLine'); if(!el) return;
+  const u=auth && auth.currentUser;
+  if(u){ el.innerHTML=`✅ ${escapeHtml(u.email||'로그인됨')} <button class="mini-link" onclick="doLogout()">로그아웃</button>`; }
+  else { el.innerHTML=`게스트 모드 <button class="mini-link" onclick="showLogin()">로그인</button>`; }
+}
+function authMsg(err){
+  const m={'auth/invalid-email':'이메일 형식이 올바르지 않아요',
+    'auth/weak-password':'비밀번호는 6자 이상이어야 해요',
+    'auth/email-already-in-use':'이미 가입된 이메일이에요',
+    'auth/wrong-password':'비밀번호가 틀렸어요',
+    'auth/invalid-credential':'이메일 또는 비밀번호가 틀렸어요',
+    'auth/user-not-found':'없는 계정이에요',
+    'auth/popup-closed-by-user':'로그인 창이 닫혔어요',
+    'auth/operation-not-allowed':'Firebase 콘솔에서 이 로그인 방법을 켜주세요',
+    'auth/unauthorized-domain':'Firebase 인증 도메인에 이 주소를 추가해 주세요'};
+  return (err && m[err.code]) || (err? err.message : '로그인 실패');
+}
+
+/* =========================================================================
+   [관리자]
+   ========================================================================= */
+function renderAdmin(){
+  const box=document.getElementById('admUsers');
+  if(!isAdmin){ box.innerHTML='<p class="muted">권한이 없어요.</p>'; return; }
+  if(!fbReady){ box.innerHTML='<p class="muted">Firebase가 필요해요.</p>'; return; }
+  box.innerHTML='<p class="muted">불러오는 중...</p>';
+  db.ref('users').once('value').then(snap=>{
+    const arr=[]; snap.forEach(ch=>{ const v=ch.val()||{}; arr.push({id:ch.key, name:v.name||'(이름없음)', best:v.best||0, coins:v.coins||0, admin:v.admin===true}); });
+    arr.sort((a,b)=>b.best-a.best);
+    box.innerHTML='';
+    if(!arr.length){ box.innerHTML='<p class="muted">유저가 없어요.</p>'; return; }
+    arr.forEach(u=>{
+      const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':'');
+      row.innerHTML=`<div class="rank-name">${u.admin?'👑 ':''}${escapeHtml(u.name)}</div><div class="rank-score">🏆${u.best} · 🪙${u.coins}</div>`;
+      const adm=document.createElement('button'); adm.className='btn'; adm.textContent=u.admin?'관리자 해제':'관리자 지정';
+      adm.addEventListener('click', ()=>{ db.ref('users/'+u.id+'/admin').set(!u.admin).then(()=>{ toast(u.admin?'관리자에서 해제했어요':'관리자로 지정했어요'); renderAdmin(); }); });
+      const del=document.createElement('button'); del.className='btn'; del.textContent='기록삭제';
+      del.addEventListener('click', ()=>{ db.ref('users/'+u.id).remove().then(()=>{ toast('삭제했어요'); renderAdmin(); }); });
+      row.appendChild(adm); row.appendChild(del); box.appendChild(row);
+    });
+  });
+}
+
+/* =========================================================================
+   [BlockGame 엔진] 끝없는 신기록 모드
+   ========================================================================= */
+let GAME_SEQ=0; const GAMES={};
+class BlockGame{
+  constructor(container, opt={}){
+    this.id='g'+(GAME_SEQ++); GAMES[this.id]=this;
+    this.opt=opt; this.grid=makeGrid(); this.tray=[null,null,null];
+    this.locked=false; this.itemMode=null; this.cellEls=[];
+    this.buildDOM(container); this.spawnTray(); this.render();
+  }
+  buildDOM(container){
+    this.root=document.createElement('div'); this.root.style.display='flex';
+    this.root.style.flexDirection='column'; this.root.style.alignItems='center';
+    this.boardEl=document.createElement('div'); this.boardEl.className='board';
+    for(let r=0;r<SIZE;r++){ const ref=[];
+      for(let c=0;c<SIZE;c++){ const cell=document.createElement('div'); cell.className='cell';
+        cell.dataset.gid=this.id; cell.dataset.r=r; cell.dataset.c=c;
+        cell.addEventListener('click', ()=> this.onCellClick(r,c));
+        this.boardEl.appendChild(cell); ref.push(cell); }
+      this.cellEls.push(ref);
+    }
+    this.trayEl=document.createElement('div'); this.trayEl.className='tray';
+    this.root.appendChild(this.boardEl); this.root.appendChild(this.trayEl);
+    container.appendChild(this.root);
+  }
+  spawnTray(){ this.tray=[randomBlock(),randomBlock(),randomBlock()]; this.renderTray(); }
+  rerollTray(){ this.tray=this.tray.map(()=>randomBlock()); this.renderTray(); }
+
+  render(){
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const cell=this.cellEls[r][c], d=this.grid[r][c];
+      cell.className='cell'; cell.style.background=''; cell.style.boxShadow='';
+      if(d.state==='fill'){ cell.classList.add('fill'); cell.style.background=d.color;
+        cell.style.boxShadow=`inset 0 0 0 1px rgba(255,255,255,.25), 0 0 10px ${d.color}66`; }
+      else if(d.state==='garbage'){ cell.classList.add('garbage'); }
+      if(this.itemMode){ cell.classList.add('target'); } // 아이템 모드: 모든 칸 클릭 가능 표시
+    }
+  }
+  renderTray(){
+    this.trayEl.innerHTML='';
+    const cellPx=this.cellEls[0][0].getBoundingClientRect().width||46;
+    const miniPx=Math.max(15, Math.round(cellPx*0.5));
+    this.trayEl.style.setProperty('--mini', miniPx+'px');
+    this.tray.forEach((block,idx)=>{
+      const slot=document.createElement('div'); slot.className='tray-slot';
+      if(!block) slot.classList.add('used');
+      const b=block||{cells:[[0,0]],color:'transparent'};
+      let maxR=0,maxC=0; b.cells.forEach(([r,c])=>{maxR=Math.max(maxR,r);maxC=Math.max(maxC,c);});
+      slot.style.gridTemplateColumns=`repeat(${maxC+1}, ${miniPx}px)`;
+      slot.style.gridTemplateRows=`repeat(${maxR+1}, ${miniPx}px)`;
+      const filled=new Set(b.cells.map(([r,c])=>r+'_'+c));
+      for(let r=0;r<=maxR;r++) for(let c=0;c<=maxC;c++){
+        const m=document.createElement('div');
+        if(block && filled.has(r+'_'+c)){ m.className='mini'; m.style.background=block.color;
+          m.style.boxShadow=`0 0 8px ${block.color}88`;
+          m.addEventListener('pointerdown', e=> startDrag(e, this, idx, r, c)); }
+        else m.className='mini empty';
+        slot.appendChild(m);
+      }
+      this.trayEl.appendChild(slot);
+    });
+  }
+  canPlace(cells,r,c){ for(const[dr,dc]of cells){const rr=r+dr,cc=c+dc; if(rr<0||cc<0||rr>=SIZE||cc>=SIZE)return false; if(this.grid[rr][cc].state!=='empty')return false;} return true; }
+  anyMovePossible(){ for(const b of this.tray){ if(!b)continue; for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++) if(this.canPlace(b.cells,r,c))return true; } return false; }
+
+  placeBlock(idx,r,c){
+    const block=this.tray[idx];
+    if(!block||!this.canPlace(block.cells,r,c)) return false;
+    for(const[dr,dc]of block.cells) this.grid[r+dr][c+dc]={state:'fill',color:block.color};
+    this.tray[idx]=null;
+    if(this.opt.addScore) this.opt.addScore(block.cells.length); // 놓은 칸 수만큼 점수
+    this.render(); this.renderTray();
+    this.clearLines();
+    if(this.tray.every(b=>b===null)) this.spawnTray();
+    if(this.opt.onUpdate) this.opt.onUpdate(this);
+    if(!this.anyMovePossible() && this.opt.onStuck) this.opt.onStuck(this);
+    return true;
+  }
+  clearLines(){
+    const fullRows=[],fullCols=[];
+    for(let r=0;r<SIZE;r++) if(this.grid[r].every(d=>d.state!=='empty')) fullRows.push(r);
+    for(let c=0;c<SIZE;c++){ let f=true; for(let r=0;r<SIZE;r++) if(this.grid[r][c].state==='empty'){f=false;break;} if(f)fullCols.push(c); }
+    const lines=fullRows.length+fullCols.length;
+    if(lines===0) return 0;
+    const set=new Set();
+    fullRows.forEach(r=>{for(let c=0;c<SIZE;c++)set.add(r+'_'+c);});
+    fullCols.forEach(c=>{for(let r=0;r<SIZE;r++)set.add(r+'_'+c);});
+    if(this.opt.addScore) this.opt.addScore(50*lines*(lines+1)); // 1줄100 2줄300 3줄600...
+    if(this.opt.onLines) this.opt.onLines(this, lines);          // 대전: 2줄 이상이면 공격
+    this.burst(set);
+    return lines;
+  }
+  // 칸들을 비우면서 터지는 연출
+  burst(set){
+    set.forEach(key=>{
+      const[r,c]=key.split('_').map(Number); const d=this.grid[r][c];
+      if(d.state!=='empty'){ const col=d.color||'#7f8db0'; this.grid[r][c]={state:'empty',color:null};
+        const cell=this.cellEls[r][c]; cell.classList.add('pop'); setTimeout(()=>cell.classList.remove('pop'),360);
+        const rc=cell.getBoundingClientRect(); spawnParticles(rc.left+rc.width/2, rc.top+rc.height/2, col); }
+    });
+    this.render();
+  }
+  // [대전] 방해 블록 받기: 빈 칸 일부를 회색 블록으로 채운다
+  addGarbage(lines){
+    const empties=[];
+    for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++) if(this.grid[r][c].state==='empty') empties.push([r,c]);
+    for(let i=empties.length-1;i>0;i--){ const j=randInt(i+1); const t=empties[i]; empties[i]=empties[j]; empties[j]=t; }
+    const n=Math.min(empties.length, lines*3);
+    for(let k=0;k<n;k++){ const[r,c]=empties[k]; this.grid[r][c]={state:'garbage',color:null}; }
+    this.render(); this.renderTray();
+    if(!this.anyMovePossible() && this.opt.onStuck) this.opt.onStuck(this);
+  }
+  // 아이템 타겟 클릭 처리
+  onCellClick(r,c){
+    if(!this.itemMode || this.locked) return;
+    if(this.itemMode==='hammer'){
+      if(this.grid[r][c].state!=='empty'){ this.burst(new Set([r+'_'+c])); this.finishItem(); }
+    } else if(this.itemMode==='bomb'){
+      const set=new Set();
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ const rr=r+dr,cc=c+dc;
+        if(rr>=0&&cc>=0&&rr<SIZE&&cc<SIZE && this.grid[rr][cc].state==='fill') set.add(rr+'_'+cc); }
+      this.burst(set); this.finishItem();
+    }
+  }
+  enterItemMode(type){ this.itemMode=type; this.render(); }
+  finishItem(){ this.itemMode=null; this.render(); if(this.opt.onItemUsed) this.opt.onItemUsed(); }
+  destroy(){ delete GAMES[this.id]; if(this.root&&this.root.parentNode) this.root.parentNode.removeChild(this.root); }
+}
+
+/* =========================================================================
+   [드래그 앤 드롭] 마우스/터치 공용
+   ========================================================================= */
+const drags={};
+function startDrag(e, game, blockIdx, grabR, grabC){
+  if(game.locked || game.itemMode) return; // 아이템 모드 중엔 드래그 금지
+  const block=game.tray[blockIdx]; if(!block) return; e.preventDefault();
+  const r0=game.cellEls[0][0].getBoundingClientRect(), r1=game.cellEls[0][1].getBoundingClientRect();
+  const stride=(r1.left-r0.left)||r0.width+4, cw=r0.width;
+  const ghost=document.createElement('div'); ghost.className='ghost';
+  block.cells.forEach(([dr,dc])=>{ const gc=document.createElement('div'); gc.className='gc';
+    gc.style.width=cw+'px'; gc.style.height=cw+'px'; gc.style.left=(dc*stride)+'px'; gc.style.top=(dr*stride)+'px';
+    gc.style.background=block.color; gc.style.boxShadow=`0 0 14px ${block.color}, inset 0 0 0 1px rgba(255,255,255,.3)`;
+    ghost.appendChild(gc); });
+  document.body.appendChild(ghost);
+  drags[e.pointerId]={game,blockIdx,cells:block.cells,grabR,grabC,ghost,stride,cw,prev:[],target:null};
+  moveGhost(e.pointerId,e.clientX,e.clientY);
+}
+function moveGhost(pid,x,y){
+  const d=drags[pid]; if(!d) return;
+  d.ghost.style.left=(x-d.grabC*d.stride-d.cw/2)+'px';
+  d.ghost.style.top =(y-d.grabR*d.stride-d.cw/2)+'px';
+  d.prev.forEach(c=>c.classList.remove('valid','invalid')); d.prev=[];
+  const el=document.elementFromPoint(x,y);
+  if(el&&el.classList.contains('cell')&&el.dataset.gid===d.game.id){
+    const baseR=parseInt(el.dataset.r)-d.grabR, baseC=parseInt(el.dataset.c)-d.grabC;
+    const ok=d.game.canPlace(d.cells,baseR,baseC);
+    for(const[dr,dc]of d.cells){ const rr=baseR+dr,cc=baseC+dc;
+      if(rr>=0&&cc>=0&&rr<SIZE&&cc<SIZE){ const cell=d.game.cellEls[rr][cc]; cell.classList.add(ok?'valid':'invalid'); d.prev.push(cell); } }
+    d.target= ok ? {r:baseR,c:baseC} : null;
+  } else d.target=null;
+}
+function endDrag(pid){
+  const d=drags[pid]; if(!d) return;
+  d.prev.forEach(c=>c.classList.remove('valid','invalid'));
+  if(d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
+  if(d.target) d.game.placeBlock(d.blockIdx,d.target.r,d.target.c);
+  delete drags[pid];
+}
+document.addEventListener('pointermove', e=>{ if(drags[e.pointerId]){e.preventDefault(); moveGhost(e.pointerId,e.clientX,e.clientY);} }, {passive:false});
+document.addEventListener('pointerup', e=>endDrag(e.pointerId));
+document.addEventListener('pointercancel', e=>endDrag(e.pointerId));
+
+/* 파티클 */
+function spawnParticles(cx,cy,color){
+  const fx=document.getElementById('fx');
+  for(let i=0;i<6;i++){ const p=document.createElement('div'); p.className='particle';
+    p.style.left=cx+'px'; p.style.top=cy+'px'; p.style.background=color; p.style.boxShadow=`0 0 8px ${color}`;
+    fx.appendChild(p);
+    const a=Math.random()*Math.PI*2, dist=30+Math.random()*45, dx=Math.cos(a)*dist, dy=Math.sin(a)*dist-10;
+    requestAnimationFrame(()=>{ p.style.transition='transform .6s ease-out, opacity .6s ease-out';
+      p.style.transform=`translate(${dx}px,${dy}px) scale(0)`; p.style.opacity='0'; });
+    setTimeout(()=>p.remove(),650);
+  }
+}
+
+/* =========================================================================
+   [오버레이 / 토스트]
+   ========================================================================= */
+function showOverlay(html){ document.getElementById('overlayRoot').innerHTML=`<div class="modal">${html}</div>`; }
+function hideOverlay(){ document.getElementById('overlayRoot').innerHTML=''; }
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* =========================================================================
+   [게임 진행 컨트롤러]
+   ========================================================================= */
+let play={ game:null, score:0, playing:false, stuckOpen:false, pendingItem:null };
+
+function startGame(){
+  document.documentElement.style.setProperty('--cell','min(46px, 10vw)');
+  const host=document.getElementById('boardHost'); host.innerHTML='';
+  if(play.game) play.game.destroy();
+  play={ game:null, score:0, playing:true, stuckOpen:false, pendingItem:null };
+  document.getElementById('idleBox').classList.add('hidden');
+  document.getElementById('itemBar').classList.remove('hidden');
+  document.getElementById('curScore').textContent='0';
+  setHint('');
+
+  play.game=new BlockGame(host, {
+    addScore:(amt)=>{ play.score+=amt; document.getElementById('curScore').textContent=play.score; },
+    onUpdate:()=>{},
+    onStuck:()=>{ play.stuckOpen=true; showStuck(); },
+    onItemUsed:()=>{ afterItemUse(); },
+  });
+  renderItemBar();
+}
+
+// 게임 종료 → 코인 정산 + 랭킹 반영
+function endGame(){
+  play.playing=false; if(play.game) play.game.locked=true; play.stuckOpen=false;
+  const score=play.score;
+  const isRecord=setBest(score);
+  const base=Math.floor(score/COIN_PER);
+  const earned=base + (isRecord?RECORD_BONUS:0);
+  if(earned>0) addCoins(earned);
+  pushUserToCloud();
+  showOverlay(`
+    <div class="confetti">${isRecord?'🎉':'🧩'}</div>
+    <p class="big" style="color:${isRecord?'var(--green)':'var(--pink)'}">${isRecord?'신기록 달성!':'게임 종료'}</p>
+    <p class="desc">점수 <b>${score}</b> · 최고 <b>${user.best}</b><br>획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b>${isRecord?` <span style="color:var(--green)">(신기록 보너스 +${RECORD_BONUS})</span>`:''}</p>
+    <div class="btns">
+      <button class="btn primary" onclick="closeAndStart()">다시하기</button>
+      <button class="btn" onclick="closeToIdle()">그만하기</button>
+    </div>`);
+}
+function closeAndStart(){ hideOverlay(); startGame(); }
+function closeToIdle(){ hideOverlay(); play.playing=false;
+  document.getElementById('itemBar').classList.add('hidden');
+  document.getElementById('idleBox').classList.remove('hidden');
+  if(play.game){ play.game.destroy(); play.game=null; }
+}
+
+// 막힘(놓을 곳 없음) 안내 — 아이템으로 살리거나 종료
+function showStuck(){
+  const inv=user.inv;
+  const has = inv.reroll>0||inv.hammer>0||inv.bomb>0;
+  let itemBtns='';
+  for(const key of ['reroll','hammer','bomb']){
+    const c=inv[key]||0;
+    itemBtns+=`<button class="btn ${c>0?'cyan':''}" ${c>0?'':'disabled'} onclick="useItemFromStuck('${key}')">${ITEMS[key].icon} ${ITEMS[key].name} (${c})</button>`;
+  }
+  showOverlay(`
+    <div class="confetti">😵</div>
+    <p class="big" style="color:var(--pink)">놓을 곳이 없어요!</p>
+    <p class="desc">${has?'아이템을 써서 이어가거나, 게임을 끝낼 수 있어요.':'아이템이 없어요. 게임을 종료할게요.'}</p>
+    <div class="row-items">${itemBtns}</div>
+    <div class="btns"><button class="btn primary" onclick="endGame()">게임 종료</button></div>`);
+}
+function useItemFromStuck(key){ hideOverlay(); useItem(key); }
+
+/* ---- 아이템 사용 ---- */
+function useItem(key){
+  if(!play.playing) return;
+  if((user.inv[key]||0)<=0){ toast('아이템이 없어요'); if(play.stuckOpen) showStuck(); return; }
+  if(key==='reroll'){
+    addItem('reroll',-1); play.game.rerollTray(); renderItemBar(); afterItemUse();
+  } else {
+    // 망치/폭탄: 부술 칸을 클릭 → 성공 시 onItemUsed 콜백에서 차감
+    play.pendingItem=key;
+    play.game.enterItemMode(key);
+    setHint(`부술 칸을 클릭하세요 — ${ITEMS[key].icon} ${ITEMS[key].name}`);
+  }
+}
+function afterItemUse(){
+  // 타겟형 아이템(망치/폭탄)을 실제로 썼다면 차감
+  if(play.pendingItem){ addItem(play.pendingItem,-1); play.pendingItem=null; }
+  renderItemBar(); setHint('');
+  // 막혔던 상황이면 다시 판단
+  if(play.stuckOpen){
+    if(play.game.anyMovePossible()){ play.stuckOpen=false; hideOverlay(); toast('이어서 플레이!'); }
+    else showStuck();
+  }
+}
+function setHint(t){ document.getElementById('playHint').textContent=t; }
+
+function renderItemBar(){
+  const bar=document.getElementById('itemBar'); bar.innerHTML='';
+  for(const key of ['reroll','hammer','bomb']){
+    const c=user.inv[key]||0;
+    const b=document.createElement('button'); b.className='item-btn'; if(c<=0) b.disabled=true;
+    b.innerHTML=`${ITEMS[key].icon} ${ITEMS[key].name} <span class="cnt">${c}</span>`;
+    b.addEventListener('click', ()=> useItem(key));
+    bar.appendChild(b);
+  }
+}
+
+/* =========================================================================
+   [상점]
+   ========================================================================= */
+function renderShop(){
+  const list=document.getElementById('shopList'); list.innerHTML='';
+  for(const key of Object.keys(ITEMS)){
+    const it=ITEMS[key];
+    const card=document.createElement('div'); card.className='shop-card';
+    card.innerHTML=`<div class="ico">${it.icon}</div><h3>${it.name}</h3><p>${it.desc}</p>
+      <div class="price">🪙 ${it.price}</div>
+      <div class="owned">보유: ${user.inv[key]||0}개</div>`;
+    const btn=document.createElement('button'); btn.className='btn green'; btn.textContent='구매';
+    btn.addEventListener('click', ()=>{
+      if(spendCoins(it.price)){ addItem(key,1); toast(`${it.name} 구매 완료!`); renderShop(); }
+      else toast('코인이 부족해요');
+    });
+    card.appendChild(btn); list.appendChild(card);
+  }
+  renderInventory();
+}
+function renderInventory(){
+  const list=document.getElementById('invList'); list.innerHTML='';
+  let any=false;
+  for(const key of Object.keys(ITEMS)){
+    const c=user.inv[key]||0; if(c<=0) continue; any=true;
+    const it=ITEMS[key];
+    const card=document.createElement('div'); card.className='shop-card';
+    card.innerHTML=`<div class="ico">${it.icon}</div><h3>${it.name}</h3>
+      <div class="owned">보유: ${c}개</div>`;
+    const btn=document.createElement('button'); btn.className='btn'; btn.textContent='경매에 내놓기';
+    btn.addEventListener('click', ()=> openPage('auction'));
+    card.appendChild(btn); list.appendChild(card);
+  }
+  if(!any) list.innerHTML='<p class="muted">아직 가진 아이템이 없어요. 상점에서 구매해 보세요!</p>';
+}
+
+/* =========================================================================
+   [랭킹]
+   ========================================================================= */
+let rankRef=null;
+function attachRank(){
+  const box=document.getElementById('rankList');
+  if(!fbReady){ box.innerHTML='<p class="muted">랭킹을 보려면 코드에 Firebase 설정을 넣어주세요.</p>'; return; }
+  box.innerHTML='<p class="muted">불러오는 중...</p>';
+  rankRef=db.ref('users');
+  rankRef.on('value', snap=>{
+    const arr=[];
+    snap.forEach(ch=>{ const v=ch.val(); if(v&&v.name&&(v.best||0)>0) arr.push({id:ch.key, name:v.name, best:v.best}); });
+    arr.sort((a,b)=>b.best-a.best);
+    box.innerHTML='';
+    if(arr.length===0){ box.innerHTML='<p class="muted">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</p>'; return; }
+    arr.slice(0,50).forEach((u,i)=>{
+      const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':'');
+      row.innerHTML=`<div class="rank-no">${i+1}</div><div class="rank-name">${escapeHtml(u.name)}</div><div class="rank-score">${u.best}</div>`;
+      box.appendChild(row);
+    });
+  });
+}
+function detachRank(){ if(rankRef){ rankRef.off(); rankRef=null; } }
+
+/* =========================================================================
+   [경매장] 즉시 구매 방식 마켓
+   ========================================================================= */
+let aucRef=null;
+function attachAuction(){
+  fillAucSelect();
+  const box=document.getElementById('aucList');
+  if(!fbReady){ box.innerHTML='<p class="muted">경매를 쓰려면 코드에 Firebase 설정을 넣어주세요.</p>';
+    document.getElementById('aucPost').disabled=true; return; }
+  document.getElementById('aucPost').disabled=false;
+  box.innerHTML='<p class="muted">불러오는 중...</p>';
+  aucRef=db.ref('auctions');
+  aucRef.on('value', snap=>{
+    box.innerHTML='';
+    const items=[];
+    snap.forEach(ch=>{ items.push(Object.assign({id:ch.key}, ch.val())); });
+    if(items.length===0){ box.innerHTML='<p class="muted">아직 올라온 매물이 없어요.</p>'; return; }
+    items.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    items.forEach(it=>{
+      const meta=ITEMS[it.item]; if(!meta) return;
+      const mine=it.sellerId===user.id;
+      const card=document.createElement('div'); card.className='auc-card'+(mine?' mine':'');
+      card.innerHTML=`<div class="ico">${meta.icon}</div><h3>${meta.name}</h3>
+        <div class="seller">판매자: ${escapeHtml(it.sellerName||'?')}</div>
+        <div class="price">🪙 ${it.price}</div>`;
+      const btn=document.createElement('button');
+      if(mine){ btn.className='btn'; btn.textContent='등록 취소';
+        btn.addEventListener('click', ()=> cancelAuction(it)); }
+      else { btn.className='btn cyan'; btn.textContent='구매';
+        btn.addEventListener('click', ()=> buyAuction(it)); }
+      card.appendChild(btn); box.appendChild(card);
+    });
+  });
+}
+function detachAuction(){ if(aucRef){ aucRef.off(); aucRef=null; } }
+
+function fillAucSelect(){
+  const sel=document.getElementById('aucItem'); sel.innerHTML='';
+  let any=false;
+  for(const key of Object.keys(ITEMS)){
+    const c=user.inv[key]||0; if(c<=0) continue; any=true;
+    const o=document.createElement('option'); o.value=key; o.textContent=`${ITEMS[key].icon} ${ITEMS[key].name} (보유 ${c})`;
+    sel.appendChild(o);
+  }
+  if(!any){ const o=document.createElement('option'); o.value=''; o.textContent='내놓을 아이템 없음'; sel.appendChild(o); }
+}
+
+// 내 아이템을 경매에 등록
+function postAuction(){
+  if(!fbReady){ toast('Firebase 설정이 필요해요'); return; }
+  const key=document.getElementById('aucItem').value;
+  const price=parseInt(document.getElementById('aucPrice').value);
+  if(!key){ toast('내놓을 아이템이 없어요'); return; }
+  if(!(price>0)){ toast('가격을 입력하세요'); return; }
+  if((user.inv[key]||0)<=0){ toast('그 아이템이 없어요'); return; }
+  addItem(key,-1); // 내 인벤토리에서 빼서 매물로
+  db.ref('auctions').push({ sellerId:user.id, sellerName:user.name, item:key, price:price, createdAt:Date.now() })
+    .then(()=>{ toast('경매에 등록했어요!'); fillAucSelect(); document.getElementById('aucPrice').value=''; })
+    .catch(()=>{ addItem(key,1); toast('등록 실패'); });
+}
+
+// 등록 취소 → 아이템 돌려받기
+function cancelAuction(it){
+  db.ref('auctions/'+it.id).transaction(cur=>{
+    if(cur===null) return; // 이미 없음
+    return null;           // 삭제
+  }, (err,committed)=>{
+    if(committed){ addItem(it.item,1); toast('등록을 취소했어요'); }
+    else toast('취소 실패');
+  });
+}
+
+// 경매 구매 (트랜잭션으로 중복 구매 방지)
+function buyAuction(it){
+  if(it.sellerId===user.id){ toast('내 매물이에요'); return; }
+  if(user.coins<it.price){ toast('코인이 부족해요'); return; }
+  const ref=db.ref('auctions/'+it.id);
+  ref.transaction(cur=>{
+    if(cur===null) return;        // 이미 팔림 → 중단
+    return null;                  // 내가 차지하고 삭제
+  }, (err,committed)=>{
+    if(err){ toast('구매 실패'); return; }
+    if(!committed){ toast('이미 팔렸어요'); return; }
+    // 성공: 코인 지불 + 아이템 수령 + 판매자 우편함에 대금 적립
+    spendCoins(it.price);
+    addItem(it.item,1);
+    db.ref('users/'+it.sellerId+'/mailbox/coins').transaction(c=>(c||0)+it.price);
+    toast(`${ITEMS[it.item].name} 구매 완료! 🪙-${it.price}`);
+    fillAucSelect();
+  });
+}
+
+/* =========================================================================
+   [닉네임]
+   ========================================================================= */
+function showNicknamePrompt(first){
+  showOverlay(`
+    <div class="confetti">👋</div>
+    <p class="big">${first?'환영해요!':'닉네임 변경'}</p>
+    <p class="desc">랭킹과 경매에 표시될 닉네임을 정해주세요.</p>
+    <input id="nickInput" maxlength="12" placeholder="닉네임 (최대 12자)" value="${first?'':escapeHtml(user.name||'')}"/>
+    <div class="btns"><button class="btn primary" onclick="confirmNick(${first?'true':'false'})">확인</button></div>`);
+  setTimeout(()=>{ const el=document.getElementById('nickInput'); if(el) el.focus(); },50);
+}
+function confirmNick(first){
+  const v=(document.getElementById('nickInput').value||'').trim();
+  if(v.length<1){ toast('닉네임을 입력하세요'); return; }
+  user.name=v; saveUser(); refreshHeader(); pushUserToCloud(); hideOverlay();
+  toast(first?`반가워요, ${v}님!`:'닉네임을 변경했어요');
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* =========================================================================
+   [온라인 대전] Firebase 실시간 데이터베이스로 1:1 대결
+   - 내 보드는 내 칸(p1/p2)에 저장, 상대는 상대 칸을 구독해 '보기 전용'으로 봄.
+   - 2줄 이상 깨면 상대 공격함(incoming)에 방해 블록 명령을 보낸다.
+   ========================================================================= */
+let online = null;
+function setVersusStatus(html){ const el=document.getElementById('versusStatus'); if(el) el.innerHTML=html; }
+function makeRoomCode(){ const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<4;i++) s+=ch[randInt(ch.length)]; return s; }
+function track(ref,event,cb,bucket){ ref.on(event,cb); bucket.push({ref,event,cb}); }
+function detach(bucket){ bucket.forEach(l=>l.ref.off(l.event,l.cb)); bucket.length=0; }
+
+function enterVersus(){
+  cleanupVersus();
+  document.getElementById('versusArena').classList.add('hidden');
+  document.getElementById('versusConnect').classList.remove('hidden');
+  const host=document.getElementById('vHost'), join=document.getElementById('vJoin');
+  if(!fbReady){ setVersusStatus('온라인 대전을 하려면 코드에 Firebase 설정을 넣어주세요.'); host.disabled=true; join.disabled=true; }
+  else { setVersusStatus('방을 만들어 친구에게 코드를 알려주거나,<br>받은 코드로 참가하세요.'); host.disabled=false; join.disabled=false; document.getElementById('vCode').value=''; }
+}
+function showVersusArena(){ document.getElementById('versusConnect').classList.add('hidden'); document.getElementById('versusArena').classList.remove('hidden'); }
+
+// 상대 보드 '보기 전용' 미러
+function buildMirror(container){
+  const board=document.createElement('div'); board.className='board'; const cells=[];
+  for(let r=0;r<SIZE;r++){ const row=[]; for(let c=0;c<SIZE;c++){ const cell=document.createElement('div'); cell.className='cell'; board.appendChild(cell); row.push(cell);} cells.push(row); }
+  container.appendChild(board);
+  return { render(grid){ for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){ const cell=cells[r][c], d=grid[r][c];
+    cell.className='cell'; cell.style.background=''; cell.style.boxShadow='';
+    if(d.state==='fill'){ cell.classList.add('fill'); cell.style.background=d.color; cell.style.boxShadow=`inset 0 0 0 1px rgba(255,255,255,.25), 0 0 10px ${d.color}66`; }
+    else if(d.state==='garbage') cell.classList.add('garbage'); } } };
+}
+function sendMyState(){ if(!online||!online.myGame) return; online.roomRef.child(online.me).update({ grid:encodeGrid(online.myGame.grid), score:online.myScore }); }
+
+function hostRoom(){
+  if(!fbReady) return;
+  const code=makeRoomCode();
+  online={ db, code, roomRef:db.ref('rooms/'+code), me:'p1', opp:'p2', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0 };
+  online.roomRef.set({ createdAt:firebase.database.ServerValue.TIMESTAMP, round:0,
+    p1:{joined:true,connected:true,score:0,over:false,rematch:false,grid:''},
+    p2:{joined:false,connected:false,score:0,over:false,rematch:false,grid:''} }).then(()=>{
+    online.roomRef.onDisconnect().remove();
+    setVersusStatus(`<div class="roomcode">${code}</div>이 코드를 친구에게 알려주세요!<br>상대가 들어오면 자동으로 시작돼요.`);
+    track(online.roomRef.child('p2/joined'),'value', snap=>{
+      if(snap.val()===true && online && online.me==='p1') online.roomRef.update({'p1/over':false,'p1/rematch':false,'p2/over':false,'p2/rematch':false, round:1});
+    }, online.session);
+    attachRoundListener(); attachRematchWatch();
+  }).catch(err=> setVersusStatus('방 만들기 실패: '+err.message));
+}
+function joinRoom(code){
+  if(!fbReady) return;
+  const roomRef=db.ref('rooms/'+code);
+  roomRef.once('value').then(snap=>{
+    if(!snap.exists()){ setVersusStatus('그런 방 코드가 없어요.'); return; }
+    const d=snap.val(); if(d.p2 && d.p2.joined){ setVersusStatus('이미 꽉 찬 방이에요.'); return; }
+    online={ db, code, roomRef, me:'p2', opp:'p1', myGame:null, mirror:null, myScore:0, finished:false, session:[], match:[], lastRound:0 };
+    return roomRef.child('p2').update({joined:true,connected:true,score:0,over:false,rematch:false,grid:''}).then(()=>{
+      roomRef.child('p2/connected').onDisconnect().set(false);
+      setVersusStatus('연결됐어요! 곧 시작돼요...');
+      attachRoundListener();
+    });
+  }).catch(err=> setVersusStatus('참가 실패: '+err.message));
+}
+function attachRoundListener(){
+  track(online.roomRef.child('round'),'value', snap=>{ const r=snap.val()||0; if(r>0 && r!==online.lastRound){ online.lastRound=r; startOnlineMatch(); } }, online.session);
+}
+function attachRematchWatch(){
+  if(online.me!=='p1') return; let r1=false,r2=false;
+  const maybe=()=>{ if(r1&&r2){ online.roomRef.child('round').once('value').then(s=>{ const next=(s.val()||1)+1; online.roomRef.update({'p1/over':false,'p1/rematch':false,'p2/over':false,'p2/rematch':false, round:next}); }); } };
+  track(online.roomRef.child('p1/rematch'),'value', s=>{ r1=!!s.val(); maybe(); }, online.session);
+  track(online.roomRef.child('p2/rematch'),'value', s=>{ r2=!!s.val(); maybe(); }, online.session);
+}
+function startOnlineMatch(){
+  hideOverlay(); detach(online.match);
+  document.documentElement.style.setProperty('--cell','min(32px, 8.5vw)');
+  document.getElementById('versusCode').textContent=online.code; showVersusArena();
+  const arena=document.getElementById('versusBoards'); arena.innerHTML='';
+  if(online.myGame) online.myGame.destroy();
+  online.finished=false; online.myScore=0;
+  const meName=online.me==='p1'?'YOU (P1)':'YOU (P2)', oppName=online.me==='p1'?'OPPONENT (P2)':'OPPONENT (P1)';
+  const myPanel=document.createElement('div'); myPanel.className='panel p1';
+  myPanel.innerHTML=`<div class="name">${meName}</div><div class="score">점수 <b id="onMyScore">0</b></div>`;
+  const myHost=document.createElement('div'); myPanel.appendChild(myHost);
+  const divider=document.createElement('div'); divider.className='vs-divider'; divider.textContent='VS';
+  const oppPanel=document.createElement('div'); oppPanel.className='panel p2';
+  oppPanel.innerHTML=`<div class="name">${oppName}</div><div class="score">점수 <b id="onOppScore">0</b></div><div class="readonly-tag">상대 화면 (보기 전용)</div>`;
+  const oppHost=document.createElement('div'); oppPanel.appendChild(oppHost);
+  arena.appendChild(myPanel); arena.appendChild(divider); arena.appendChild(oppPanel);
+  const myScoreEl=document.getElementById('onMyScore'), oppScoreEl=document.getElementById('onOppScore');
+
+  online.myGame=new BlockGame(myHost, {
+    addScore:(amt)=>{ online.myScore+=amt; myScoreEl.textContent=online.myScore; },
+    onLines:(g,lines)=>{ if(lines>=2 && !online.finished) online.roomRef.child(online.opp+'/incoming').push({lines}); },
+    onUpdate:()=> sendMyState(),
+    onStuck:()=>{ if(online.finished) return; online.finished=true; online.roomRef.child(online.me).update({over:true}); sendMyState(); onlineResult(false); },
+  });
+  online.mirror=buildMirror(oppHost);
+  online.roomRef.child(online.me).update({over:false, rematch:false, score:0, grid:encodeGrid(online.myGame.grid)});
+  online.roomRef.child(online.me+'/incoming').remove();
+
+  track(online.roomRef.child(online.opp+'/grid'),'value', s=>{ if(s.val()!=null) online.mirror.render(decodeGrid(s.val())); }, online.match);
+  track(online.roomRef.child(online.opp+'/score'),'value', s=>{ oppScoreEl.textContent=s.val()||0; }, online.match);
+  track(online.roomRef.child(online.opp+'/over'),'value', s=>{ if(s.val()===true && !online.finished) onlineResult(true); }, online.match);
+  track(online.roomRef.child(online.opp+'/connected'),'value', s=>{ if(s.val()===false && !online.finished) opponentLeft(); }, online.match);
+  track(online.roomRef.child(online.me+'/incoming'),'child_added', s=>{ const v=s.val();
+    if(v && v.lines && online.myGame && !online.finished){ online.myGame.addGarbage(v.lines); sendMyState(); } s.ref.remove(); }, online.match);
+}
+function onlineResult(iWon){
+  online.finished=true; if(online.myGame) online.myGame.locked=true;
+  const color=iWon?'var(--green)':'var(--pink)';
+  showOverlay(`<div class="confetti">${iWon?'🏆':'😵'}</div>
+    <p class="big" style="color:${color}">${iWon?'🎉 승리!':'💥 패배'}</p>
+    <p class="desc">${iWon?'상대가 먼저 막혔어요!':'아쉽지만 다음 판에 설욕하세요!'}</p>
+    <p class="desc" id="onModalNote" style="color:var(--cyan)"></p>
+    <div class="btns"><button class="btn cyan" onclick="requestRematch()">재경기 🔄</button>
+      <button class="btn" onclick="openPage('play')">나가기</button></div>`);
+}
+function requestRematch(){ online.roomRef.child(online.me).update({rematch:true}); const el=document.getElementById('onModalNote'); if(el) el.textContent='상대의 동의를 기다리는 중...'; }
+function opponentLeft(){ online.finished=true;
+  showOverlay(`<div class="confetti">🚪</div><p class="big" style="color:var(--muted)">상대가 나갔어요</p>
+    <p class="desc">연결이 끊겼어요.</p><div class="btns"><button class="btn" onclick="openPage('play')">나가기</button></div>`); }
+function cleanupVersus(){
+  if(!online) return;
+  detach(online.match); detach(online.session);
+  try{
+    if(online.me==='p1' && online.roomRef){ online.roomRef.onDisconnect().cancel(); online.roomRef.remove(); }
+    else if(online.roomRef){ const r=online.roomRef.child('p2/connected'); r.onDisconnect().cancel(); r.set(false); }
+  }catch(e){}
+  if(online.myGame) online.myGame.destroy();
+  online=null;
+}
+
+/* =========================================================================
+   [페이지 전환]
+   ========================================================================= */
+function openPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active', n.dataset.page===name));
+  document.getElementById('page-'+name).classList.add('active');
+  // 페이지별 데이터 연결/해제
+  detachRank(); detachAuction();
+  if(name!=='versus') cleanupVersus();
+  if(name==='rank') attachRank();
+  else if(name==='shop') renderShop();
+  else if(name==='auction') attachAuction();
+  else if(name==='versus') enterVersus();
+  else if(name==='admin') renderAdmin();
+}
+
+/* =========================================================================
+   [시작]
+   ========================================================================= */
+document.querySelectorAll('.nav').forEach(n=> n.addEventListener('click', ()=> openPage(n.dataset.page)));
+document.getElementById('btnStart').addEventListener('click', startGame);
+document.getElementById('editNick').addEventListener('click', ()=> showNicknamePrompt(false));
+document.getElementById('aucPost').addEventListener('click', postAuction);
+document.getElementById('vHost').addEventListener('click', hostRoom);
+document.getElementById('vJoin').addEventListener('click', ()=>{
+  const code=(document.getElementById('vCode').value||'').trim().toUpperCase();
+  if(code.length!==4){ setVersusStatus('4글자 방 코드를 입력하세요.'); return; }
+  joinRoom(code);
+});
+document.getElementById('vLeave').addEventListener('click', ()=> enterVersus());
+document.getElementById('admGive').addEventListener('click', ()=>{
+  const n=parseInt(document.getElementById('admCoin').value);
+  if(n>0){ addCoins(n); document.getElementById('admCoin').value=''; toast('🪙 '+n+' 지급했어요'); }
+});
+document.getElementById('admClearAuc').addEventListener('click', ()=>{
+  if(fbReady) db.ref('auctions').remove().then(()=> toast('경매를 모두 정리했어요'));
+});
+window.addEventListener('resize', ()=>{
+  if(play.game) play.game.renderTray();
+  if(online && online.myGame) online.myGame.renderTray();
+});
+
+initFirebase();
+loadUser();
+refreshHeader();
+if(fbReady && auth){
+  updateAuthLine();
+  auth.onAuthStateChanged(handleAuth); // 로그인 상태에 따라 로그인창/게임 자동 결정
+} else {
+  // Firebase/로그인 비활성 → 게스트 로컬 모드
+  guestMode=true; updateAuthLine();
+  if(!user.name) showNicknamePrompt(true);
+}
+</script>
+</body>
+</html>
