@@ -249,6 +249,45 @@
   body.light .board{box-shadow:inset 0 0 20px rgba(0,0,0,.08), 0 10px 30px rgba(0,0,0,.12);}
   body.light .cell{box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);}
 
+  /* 게임 허브 */
+  .game-hub{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-top:18px;}
+  .hub-card{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.1); border-radius:18px; padding:24px 20px; cursor:pointer; transition:transform .15s, border-color .15s, box-shadow .15s; text-align:center;}
+  .hub-card:hover{transform:translateY(-4px); border-color:var(--cyan); box-shadow:0 12px 30px rgba(0,229,255,.18);}
+  .hub-ico{font-size:46px; line-height:1; margin-bottom:10px;}
+  .hub-card h3{margin:0 0 6px; font-size:18px;}
+  .hub-card p{margin:0 0 12px; font-size:13px; color:var(--muted);}
+  .hub-best{font-size:12px; color:var(--gold);}
+  .game-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px;}
+
+  /* 한컴 타자 */
+  .type-progress{color:var(--muted); font-size:14px; margin-bottom:10px;}
+  .type-target{font-size:22px; line-height:1.7; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:18px 20px; margin-bottom:14px; word-break:keep-all; user-select:none;}
+  .type-input{width:100%; max-width:640px; padding:14px 16px; font-size:18px; border-radius:12px; background:rgba(0,0,0,.3); border:2px solid var(--cyan); color:var(--txt); outline:none;}
+  .type-stat{margin-top:14px; color:var(--muted); font-size:15px;}
+  .type-stat b{color:var(--cyan);}
+
+  /* 지렁이 */
+  .snake-canvas{display:block; background:#0b0d1a; border:2px solid rgba(255,255,255,.12); border-radius:14px; width:min(360px,86vw); height:min(360px,86vw); touch-action:none;}
+  .snake-pad{margin-top:14px; display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .snake-pad-mid{display:flex; gap:60px;}
+  .snake-pad button{width:56px; height:56px; font-size:22px; border-radius:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:var(--txt); cursor:pointer;}
+  .snake-pad button:active{background:var(--cyan); color:#06121a;}
+
+  /* 카드 */
+  .cards-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-width:380px; margin-bottom:14px;}
+  .card-cell{aspect-ratio:1; font-size:30px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(135deg,#2a2d4a,#1c1e34); color:transparent; cursor:pointer; transition:transform .12s, background .12s; display:flex; align-items:center; justify-content:center;}
+  .card-cell.flipped{background:rgba(255,255,255,.92); color:#111; transform:scale(1.03);}
+  .card-cell.matched{background:linear-gradient(135deg, rgba(43,255,136,.85), rgba(0,229,255,.7)); color:#06121a;}
+
+  /* 랭킹 탭 */
+  .rank-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .rank-tab{cursor:pointer; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); color:var(--txt); padding:9px 16px; border-radius:12px; font-weight:700; font-size:14px;}
+  .rank-tab.active{background:linear-gradient(90deg, rgba(255,46,136,.25), rgba(0,229,255,.18)); border-color:rgba(255,255,255,.25);}
+
+  body.light .hub-card,body.light .type-target,body.light .rank-tab,body.light .snake-pad button{background:#fff; border-color:#dde3f0;}
+  body.light .type-input,body.light .snake-canvas{background:#f4f6fc;}
+  body.light .card-cell{background:linear-gradient(135deg,#cfd6ec,#e3e8f6);}
+
   /* 오버레이 / 토스트 */
   #overlayRoot:not(:empty){position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center;
     background:rgba(8,8,14,.78); backdrop-filter:blur(4px);}
@@ -300,7 +339,7 @@
       <div class="auth-line" id="authLine"></div>
     </div>
     <nav>
-      <button class="nav active" data-page="play">🎮 게임</button>
+      <button class="nav active" data-page="games">🎮 게임</button>
       <button class="nav" data-page="versus">⚔️ 대전</button>
       <button class="nav" data-page="rank">🏆 랭킹</button>
       <button class="nav" data-page="shop">🛒 상점</button>
@@ -316,9 +355,22 @@
 
   <!-- ===================== 본문 ===================== -->
   <main class="content">
+    <!-- 게임 허브 -->
+    <section class="page active" id="page-games">
+      <h1>🎮 게임</h1>
+      <p class="muted">하고 싶은 게임을 골라보세요. 각 게임의 점수는 랭킹에 올라가요!</p>
+      <div class="game-hub">
+        <div class="hub-card" onclick="openPage('play')"><div class="hub-ico">🧩</div><h3>BLOCK BLASTER</h3><p>블록을 끼워 줄을 깨는 네온 퍼즐</p><span class="hub-best">최고 <b id="hubBestBlock">0</b></span></div>
+        <div class="hub-card" onclick="openPage('typing')"><div class="hub-ico">⌨️</div><h3>한컴 타자연습</h3><p>문장을 빠르고 정확하게 입력</p><span class="hub-best">최고 <b id="hubBestTyping">0</b> 타/분</span></div>
+        <div class="hub-card" onclick="openPage('snake')"><div class="hub-ico">🐍</div><h3>지렁이 게임</h3><p>먹이를 먹고 점점 길어지기</p><span class="hub-best">최고 <b id="hubBestSnake">0</b></span></div>
+        <div class="hub-card" onclick="openPage('cards')"><div class="hub-ico">🃏</div><h3>카드 짝맞추기</h3><p>같은 그림을 기억해서 맞추기</p><span class="hub-best">최고 <b id="hubBestCards">0</b></span></div>
+      </div>
+    </section>
+
     <!-- 게임 -->
-    <section class="page active" id="page-play">
+    <section class="page" id="page-play">
       <div class="play-head">
+        <button class="btn" style="padding:7px 12px; font-size:13px" onclick="openPage('games')">← 게임 목록</button>
         <div class="pill">점수<b id="curScore">0</b></div>
         <div class="pill">최고<b id="curBest">0</b></div>
       </div>
@@ -342,10 +394,61 @@
       </div>
     </section>
 
+    <!-- 한컴 타자연습 -->
+    <section class="page" id="page-typing">
+      <div class="game-top"><button class="btn" onclick="openPage('games')">← 게임 목록</button><div class="pill">최고 <b id="typeBest">0</b> 타/분</div></div>
+      <h1>⌨️ 한컴 타자연습</h1>
+      <div id="typeIdle">
+        <p class="muted">화면의 문장을 똑같이 입력하세요. 5문장의 평균 타속(타/분)이 점수예요.</p>
+        <button class="btn primary big" onclick="startTyping()">▶ 시작</button>
+      </div>
+      <div id="typePlay" class="hidden">
+        <div class="type-progress" id="typeProg">1 / 5</div>
+        <div class="type-target" id="typeTarget"></div>
+        <input id="typeInput" class="type-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="여기에 입력하세요..." />
+        <div class="type-stat"><b id="typeSpeed">0</b> 타/분 · 정확도 <b id="typeAcc">100</b>%</div>
+      </div>
+    </section>
+
+    <!-- 지렁이 게임 -->
+    <section class="page" id="page-snake">
+      <div class="game-top"><button class="btn" onclick="openPage('games')">← 게임 목록</button><div class="pill">최고 <b id="snakeBest">0</b></div></div>
+      <h1>🐍 지렁이 게임</h1>
+      <div class="pill" style="margin-bottom:12px">점수 <b id="snakeScore">0</b></div>
+      <canvas id="snakeCanvas" width="360" height="360" class="snake-canvas"></canvas>
+      <div id="snakeIdle">
+        <p class="muted">방향키(또는 아래 버튼·화면 스와이프)로 움직여요.<br>먹이를 먹으면 길어지고, 벽이나 몸에 부딪히면 끝!</p>
+        <button class="btn primary big" onclick="startSnake()">▶ 시작</button>
+      </div>
+      <div class="snake-pad">
+        <button onclick="snakeDir(0,-1)">▲</button>
+        <div class="snake-pad-mid"><button onclick="snakeDir(-1,0)">◀</button><button onclick="snakeDir(1,0)">▶</button></div>
+        <button onclick="snakeDir(0,1)">▼</button>
+      </div>
+    </section>
+
+    <!-- 카드 짝맞추기 -->
+    <section class="page" id="page-cards">
+      <div class="game-top"><button class="btn" onclick="openPage('games')">← 게임 목록</button><div class="pill">최고 <b id="cardsBest">0</b></div></div>
+      <h1>🃏 카드 짝맞추기</h1>
+      <div class="pill" style="margin-bottom:12px">시도 <b id="cardsMoves">0</b>회</div>
+      <div id="cardsGrid" class="cards-grid"></div>
+      <div id="cardsIdle">
+        <p class="muted">같은 그림 카드 짝을 모두 맞추면 끝! 적게 뒤집을수록 점수가 높아요.</p>
+        <button class="btn primary big" onclick="startCards()">▶ 시작</button>
+      </div>
+    </section>
+
     <!-- 랭킹 -->
     <section class="page" id="page-rank">
       <h1>🏆 랭킹</h1>
-      <p class="muted">전 세계 플레이어들의 최고 점수 순위예요.</p>
+      <p class="muted">게임별 전 세계 최고 점수 순위예요.</p>
+      <div class="rank-tabs">
+        <button class="rank-tab active" data-rgame="block">🧩 BLOCK</button>
+        <button class="rank-tab" data-rgame="typing">⌨️ 타자</button>
+        <button class="rank-tab" data-rgame="snake">🐍 지렁이</button>
+        <button class="rank-tab" data-rgame="cards">🃏 카드</button>
+      </div>
       <div id="rankList" class="rank-list"></div>
     </section>
 
@@ -506,6 +609,8 @@ function loadUser(){
     user={ id:'u'+Date.now().toString(36)+randInt(9999), name:'', coins:0, inv:{reroll:0,hammer:0,bomb:0}, best:0 };
   }
   if(!user.inv) user.inv={reroll:0,hammer:0,bomb:0};
+  if(!user.bests) user.bests={};
+  if(user.best && !user.bests.block) user.bests.block=user.best; // 기존 블록 기록 이어받기
 }
 function saveUser(){ try{ localStorage.setItem('bb_user', JSON.stringify(user)); }catch(e){} }
 
@@ -513,6 +618,30 @@ function addCoins(n){ user.coins+=n; saveUser(); refreshHeader(); pushUserToClou
 function spendCoins(n){ if(isAdmin) return true; /* 관리자는 코인 무한 */ if(user.coins<n) return false; user.coins-=n; saveUser(); refreshHeader(); pushUserToCloud(); return true; }
 function addItem(key,n){ user.inv[key]=(user.inv[key]||0)+n; if(user.inv[key]<0)user.inv[key]=0; saveUser(); refreshHeader(); pushUserToCloud(); }
 function setBest(s){ if(s>user.best){ user.best=s; saveUser(); refreshHeader(); pushUserToCloud(); return true; } return false; }
+
+/* 게임별 점수 제출(랭킹 반영) + 개인 최고기록 갱신 */
+const GAME_LABELS = { block:'BLOCK BLASTER', typing:'한컴 타자', snake:'지렁이', cards:'카드' };
+function submitScore(game, score){
+  if(!user.bests) user.bests={};
+  let rec=false;
+  if(score>(user.bests[game]||0)){ user.bests[game]=score; rec=true; saveUser(); }
+  if(game==='block'){
+    rec = setBest(score) || rec; // 블록은 기존 users/best 랭킹 사용
+  } else {
+    pushUserToCloud();
+    if(fbReady && score>0) db.ref('lb/'+game+'/'+user.id).transaction(cur=> (cur && cur.score>=score) ? cur : {name:user.name||'익명', score:score});
+  }
+  refreshGameBests();
+  return rec;
+}
+function refreshGameBests(){
+  if(!user.bests) user.bests={};
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  set('typeBest', user.bests.typing||0);  set('hubBestTyping', user.bests.typing||0);
+  set('snakeBest', user.bests.snake||0);  set('hubBestSnake', user.bests.snake||0);
+  set('cardsBest', user.bests.cards||0);  set('hubBestCards', user.bests.cards||0);
+  set('hubBestBlock', user.bests.block||user.best||0);
+}
 
 function refreshHeader(){
   document.getElementById('coinBal').textContent = isAdmin ? '∞' : user.coins;
@@ -551,7 +680,7 @@ function initFirebase(){
 // 내 정보(이름/최고점/코인/아이템)를 랭킹·동기화용으로 올림
 function pushUserToCloud(){
   if(!fbReady) return;
-  db.ref('users/'+user.id).update({ name:user.name||'', best:user.best, coins:user.coins, inv:user.inv });
+  db.ref('users/'+user.id).update({ name:user.name||'', best:user.best, coins:user.coins, inv:user.inv, bests:user.bests||{} });
 }
 /* =========================================================================
    [우편함] 메시지 기반 — 다른 사람에게 코인/아이템/메시지 보내고, 받아서 수령
@@ -695,10 +824,11 @@ function applyCloudUser(d){
   if(typeof d.best==='number' && d.best!==user.best){ user.best=d.best; changed=true; }
   if(d.name && d.name!==user.name){ user.name=d.name; changed=true; }
   if(d.inv){ const ni=Object.assign({reroll:0,hammer:0,bomb:0}, d.inv); if(JSON.stringify(ni)!==JSON.stringify(user.inv)){ user.inv=ni; changed=true; } }
+  if(d.bests){ const nb=Object.assign({}, user.bests); for(const g in d.bests){ if((d.bests[g]||0)>(nb[g]||0)) nb[g]=d.bests[g]; } if(JSON.stringify(nb)!==JSON.stringify(user.bests||{})){ user.bests=nb; changed=true; } }
   const wantAdmin = emailAdmin || isAdminFlag(d.admin);
   if(wantAdmin!==isAdmin){ isAdmin=wantAdmin; const na=document.getElementById('navAdmin'); if(na) na.classList.toggle('hidden', !isAdmin); changed=true; }
   if(changed){
-    saveUser(); refreshHeader();
+    saveUser(); refreshHeader(); refreshGameBests();
     const shop=document.getElementById('page-shop'); if(shop && shop.classList.contains('active')) renderShop();
     if(play && play.playing) renderItemBar();
     const mp=document.getElementById('page-mypage'); if(mp && mp.classList.contains('active')) renderMyPage();
@@ -1171,7 +1301,7 @@ function startGame(){
 function endGame(){
   play.playing=false; if(play.game) play.game.locked=true; play.stuckOpen=false;
   const score=play.score;
-  const isRecord=setBest(score);
+  const isRecord=submitScore('block', score);
   const base=Math.floor(score/COIN_PER);
   const earned=base + (isRecord?RECORD_BONUS:0);
   if(earned>0) addCoins(earned);
@@ -1288,26 +1418,227 @@ function renderInventory(){
 /* =========================================================================
    [랭킹]
    ========================================================================= */
-let rankRef=null;
-function attachRank(){
+let rankRef=null, curRankGame='block';
+function attachRank(game){
+  detachRank();
+  if(game) curRankGame=game;
+  document.querySelectorAll('.rank-tab').forEach(t=> t.classList.toggle('active', t.dataset.rgame===curRankGame));
   const box=document.getElementById('rankList');
   if(!fbReady){ box.innerHTML='<p class="muted">랭킹을 보려면 코드에 Firebase 설정을 넣어주세요.</p>'; return; }
   box.innerHTML='<p class="muted">불러오는 중...</p>';
-  rankRef=db.ref('users');
-  rankRef.on('value', snap=>{
-    const arr=[];
-    snap.forEach(ch=>{ const v=ch.val(); if(v&&v.name&&(v.best||0)>0) arr.push({id:ch.key, name:v.name, best:v.best}); });
-    arr.sort((a,b)=>b.best-a.best);
-    box.innerHTML='';
-    if(arr.length===0){ box.innerHTML='<p class="muted">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</p>'; return; }
-    arr.slice(0,50).forEach((u,i)=>{
-      const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':'');
-      row.innerHTML=`<div class="rank-no">${i+1}</div><div class="rank-name">${escapeHtml(u.name)}</div><div class="rank-score">${u.best}</div>`;
-      box.appendChild(row);
+  if(curRankGame==='block'){
+    // 블록은 기존 users/best 사용
+    rankRef=db.ref('users');
+    rankRef.on('value', snap=>{
+      const arr=[];
+      snap.forEach(ch=>{ const v=ch.val(); if(v&&v.name&&(v.best||0)>0) arr.push({id:ch.key, name:v.name, score:v.best}); });
+      renderRankList(arr);
     });
+  } else {
+    rankRef=db.ref('lb/'+curRankGame);
+    rankRef.on('value', snap=>{
+      const arr=[];
+      snap.forEach(ch=>{ const v=ch.val(); if(v&&v.name&&(v.score||0)>0) arr.push({id:ch.key, name:v.name, score:v.score}); });
+      renderRankList(arr);
+    });
+  }
+}
+function renderRankList(arr){
+  arr.sort((a,b)=>b.score-a.score);
+  const box=document.getElementById('rankList'); box.innerHTML='';
+  if(arr.length===0){ box.innerHTML='<p class="muted">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</p>'; return; }
+  arr.slice(0,50).forEach((u,i)=>{
+    const row=document.createElement('div'); row.className='rank-row'+(u.id===user.id?' me':'');
+    row.innerHTML=`<div class="rank-no">${i+1}</div><div class="rank-name">${escapeHtml(u.name)}</div><div class="rank-score">${u.score}</div>`;
+    box.appendChild(row);
   });
 }
 function detachRank(){ if(rankRef){ rankRef.off(); rankRef=null; } }
+
+/* =========================================================================
+   [게임2] 한컴 타자연습
+   ========================================================================= */
+const TYPE_SENTENCES = [
+  '오늘도 즐거운 하루가 되시길 바랍니다.',
+  '꾸준히 연습하면 타자 실력이 늘어요.',
+  '바른 자세로 키보드를 쳐 봅시다.',
+  '노력은 절대 배신하지 않는다고 합니다.',
+  '작은 습관이 큰 변화를 만들어 냅니다.',
+  '책을 많이 읽으면 생각이 깊어집니다.',
+  '맑은 하늘과 시원한 바람이 좋습니다.',
+  '컴퓨터를 다룰 때는 집중이 필요해요.',
+  '친구와 함께라면 무엇이든 즐겁습니다.',
+  '천천히 그러나 정확하게 입력해 보세요.',
+  '코딩은 생각을 글로 옮기는 일입니다.',
+  '실수를 두려워하지 말고 도전하세요.',
+  '한 글자씩 또박또박 입력해 봅시다.',
+  '게임도 좋지만 공부도 잊지 마세요.',
+  '오늘의 노력이 내일의 실력이 됩니다.'
+];
+let typing=null;
+function resetTyping(){ typing=null; document.getElementById('typePlay').classList.add('hidden'); document.getElementById('typeIdle').classList.remove('hidden'); }
+function startTyping(){
+  document.getElementById('typeIdle').classList.add('hidden');
+  document.getElementById('typePlay').classList.remove('hidden');
+  const pool=[...TYPE_SENTENCES].sort(()=>Math.random()-0.5).slice(0,5);
+  typing={ idx:0, total:5, sentences:pool, startTime:0, charSum:0, timeSum:0 };
+  showTypingSentence();
+  const inp=document.getElementById('typeInput'); inp.value=''; inp.focus();
+}
+function showTypingSentence(){
+  const t=typing.sentences[typing.idx];
+  document.getElementById('typeTarget').textContent=t;
+  document.getElementById('typeProg').textContent=(typing.idx+1)+' / '+typing.total;
+  document.getElementById('typeInput').value='';
+  typing.startTime=0;
+}
+function onTypeInput(){
+  if(!typing) return;
+  const inp=document.getElementById('typeInput'); const val=inp.value; const target=typing.sentences[typing.idx];
+  if(typing.startTime===0 && val.length>0) typing.startTime=Date.now();
+  // 정확도(현재까지)
+  let err=0; const n=Math.min(val.length, target.length);
+  for(let i=0;i<n;i++){ if(val[i]!==target[i]) err++; }
+  err += Math.max(0, val.length-target.length);
+  const acc = val.length? Math.max(0, Math.round((1-err/val.length)*100)) : 100;
+  document.getElementById('typeAcc').textContent=acc;
+  // 현재 속도
+  if(typing.startTime>0){ const secs=(Date.now()-typing.startTime)/1000; document.getElementById('typeSpeed').textContent = secs>0?Math.round(val.length/secs*60):0; }
+  // 문장 완성
+  if(val===target){
+    const secs=Math.max(0.1,(Date.now()-typing.startTime)/1000);
+    typing.charSum+=target.length; typing.timeSum+=secs;
+    typing.idx++;
+    if(typing.idx>=typing.total) finishTyping();
+    else { showTypingSentence(); inp.focus(); }
+  }
+}
+function finishTyping(){
+  const score = typing.timeSum>0 ? Math.round(typing.charSum/typing.timeSum*60) : 0; // 평균 타/분
+  resetTyping();
+  const rec=submitScore('typing', score);
+  const earned=Math.floor(score/10); if(earned>0) addCoins(earned);
+  showOverlay(`
+    <div class="confetti">⌨️</div>
+    <p class="big" style="color:${rec?'var(--green)':'var(--cyan)'}">${rec?'신기록!':'타자 완료!'}</p>
+    <p class="desc">평균 <b>${score}</b> 타/분<br>획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b></p>
+    <div class="btns"><button class="btn primary" onclick="hideOverlay();startTyping()">다시하기</button><button class="btn" onclick="hideOverlay()">닫기</button></div>`);
+}
+
+/* =========================================================================
+   [게임3] 지렁이
+   ========================================================================= */
+const SNAKE_N=18;
+let snake=null;
+function resetSnake(){ cleanupSnake(); document.getElementById('snakeIdle').classList.remove('hidden'); document.getElementById('snakeScore').textContent='0';
+  const cv=document.getElementById('snakeCanvas'); if(cv){ const ctx=cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height); } }
+function cleanupSnake(){ if(snake&&snake.timer){ clearInterval(snake.timer); } snake=null; }
+function startSnake(){
+  document.getElementById('snakeIdle').classList.add('hidden');
+  const cv=document.getElementById('snakeCanvas');
+  snake={ ctx:cv.getContext('2d'), cell:cv.width/SNAKE_N, body:[{x:9,y:9},{x:8,y:9},{x:7,y:9}], dir:{x:1,y:0}, nextDir:{x:1,y:0}, food:null, score:0, timer:null, speed:150, alive:true };
+  placeSnakeFood();
+  document.getElementById('snakeScore').textContent='0';
+  drawSnake();
+  snake.timer=setInterval(snakeTick, snake.speed);
+}
+function placeSnakeFood(){ let p; do{ p={x:randInt(SNAKE_N-1), y:randInt(SNAKE_N-1)}; }while(snake.body.some(s=>s.x===p.x&&s.y===p.y)); snake.food=p; }
+function snakeDir(x,y){ if(!snake||!snake.alive) return; if(snake.dir.x===-x && snake.dir.y===-y) return; snake.nextDir={x,y}; }
+function snakeTick(){
+  if(!snake||!snake.alive) return;
+  snake.dir=snake.nextDir;
+  const head={ x:snake.body[0].x+snake.dir.x, y:snake.body[0].y+snake.dir.y };
+  if(head.x<0||head.y<0||head.x>=SNAKE_N||head.y>=SNAKE_N || snake.body.some(s=>s.x===head.x&&s.y===head.y)){ snakeOver(); return; }
+  snake.body.unshift(head);
+  if(snake.food && head.x===snake.food.x && head.y===snake.food.y){
+    snake.score+=10; document.getElementById('snakeScore').textContent=snake.score;
+    placeSnakeFood();
+    if(snake.speed>70){ snake.speed-=4; clearInterval(snake.timer); snake.timer=setInterval(snakeTick, snake.speed); } // 점점 빨라짐
+  } else snake.body.pop();
+  drawSnake();
+}
+function drawSnake(){
+  const ctx=snake.ctx, S=snake.cell, W=SNAKE_N*S;
+  ctx.clearRect(0,0,W,W);
+  ctx.fillStyle='#0b0d1a'; ctx.fillRect(0,0,W,W);
+  // 먹이
+  if(snake.food){ ctx.fillStyle='#ff2e88'; ctx.beginPath(); ctx.arc(snake.food.x*S+S/2, snake.food.y*S+S/2, S*0.36, 0, 7); ctx.fill(); }
+  // 몸
+  snake.body.forEach((s,i)=>{
+    ctx.fillStyle = i===0 ? '#00e5ff' : '#2bff88';
+    const pad=2; roundRectSnake(ctx, s.x*S+pad, s.y*S+pad, S-pad*2, S-pad*2, 5); ctx.fill();
+  });
+}
+function roundRectSnake(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function snakeOver(){
+  if(snake) snake.alive=false;
+  if(snake&&snake.timer) clearInterval(snake.timer);
+  const score=snake?snake.score:0;
+  document.getElementById('snakeIdle').classList.remove('hidden');
+  const rec=submitScore('snake', score);
+  const earned=Math.floor(score/10); if(earned>0) addCoins(earned);
+  showOverlay(`
+    <div class="confetti">🐍</div>
+    <p class="big" style="color:${rec?'var(--green)':'var(--pink)'}">${rec?'신기록!':'게임 종료'}</p>
+    <p class="desc">점수 <b>${score}</b><br>획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b></p>
+    <div class="btns"><button class="btn primary" onclick="hideOverlay();startSnake()">다시하기</button><button class="btn" onclick="hideOverlay()">닫기</button></div>`);
+  snake=null;
+}
+
+/* =========================================================================
+   [게임4] 카드 짝맞추기
+   ========================================================================= */
+const CARD_FACES=['🍎','🍌','🍇','🍓','🍑','🍉','🥝','🍒'];
+let cards=null;
+function resetCards(){ cards=null; document.getElementById('cardsIdle').classList.remove('hidden'); document.getElementById('cardsGrid').innerHTML=''; document.getElementById('cardsMoves').textContent='0'; }
+function startCards(){
+  document.getElementById('cardsIdle').classList.add('hidden');
+  const faces=[...CARD_FACES, ...CARD_FACES].sort(()=>Math.random()-0.5);
+  cards={ faces, shown:new Set(), matched:new Set(), cur:[], moves:0, lock:false, startTime:Date.now() };
+  document.getElementById('cardsMoves').textContent='0';
+  renderCards();
+}
+function renderCards(){
+  const grid=document.getElementById('cardsGrid'); grid.innerHTML='';
+  cards.faces.forEach((f,i)=>{
+    const c=document.createElement('button'); c.className='card-cell';
+    const up = cards.shown.has(i) || cards.matched.has(i);
+    if(cards.matched.has(i)) c.classList.add('matched');
+    else if(up) c.classList.add('flipped');
+    c.textContent = up ? f : '';
+    c.addEventListener('click', ()=> flipCard(i));
+    grid.appendChild(c);
+  });
+}
+function flipCard(i){
+  if(!cards || cards.lock) return;
+  if(cards.shown.has(i) || cards.matched.has(i)) return;
+  cards.shown.add(i); cards.cur.push(i); renderCards();
+  if(cards.cur.length===2){
+    cards.moves++; document.getElementById('cardsMoves').textContent=cards.moves;
+    const [a,b]=cards.cur;
+    if(cards.faces[a]===cards.faces[b]){
+      cards.matched.add(a); cards.matched.add(b); cards.cur=[]; renderCards();
+      if(cards.matched.size===cards.faces.length) finishCards();
+    } else {
+      cards.lock=true;
+      setTimeout(()=>{ if(!cards) return; cards.shown.delete(a); cards.shown.delete(b); cards.cur=[]; cards.lock=false; renderCards(); }, 750);
+    }
+  }
+}
+function finishCards(){
+  const secs=Math.round((Date.now()-cards.startTime)/1000);
+  const moves=cards.moves;
+  const score=Math.max(50, 2000 - moves*40 - secs*5);
+  resetCards();
+  const rec=submitScore('cards', score);
+  const earned=Math.floor(score/20); if(earned>0) addCoins(earned);
+  showOverlay(`
+    <div class="confetti">🃏</div>
+    <p class="big" style="color:${rec?'var(--green)':'var(--cyan)'}">${rec?'신기록!':'클리어!'}</p>
+    <p class="desc">점수 <b>${score}</b> · ${moves}번 시도 · ${secs}초<br>획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b></p>
+    <div class="btns"><button class="btn primary" onclick="hideOverlay();startCards()">다시하기</button><button class="btn" onclick="hideOverlay()">닫기</button></div>`);
+}
 
 /* =========================================================================
    [경매장] 즉시 구매 방식 마켓
@@ -1650,17 +1981,25 @@ function renderLobby(snap){
 function openPage(name){
   hideOverlay(); // 떠 있던 팝업(결과창 등) 닫기 — '나가기' 후에도 화면이 안 닫히던 문제 수정
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active', n.dataset.page===name));
+  const navName = ['play','typing','snake','cards'].includes(name) ? 'games' : name; // 게임들은 '게임' 메뉴 강조
+  document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active', n.dataset.page===navName));
   document.getElementById('page-'+name).classList.add('active');
   // 페이지별 데이터 연결/해제
   detachRank(); detachAuction();
   if(name!=='versus') cleanupVersus();
-  if(name==='rank') attachRank();
+  if(name!=='snake') cleanupSnake();   // 지렁이 루프 정지
+  if(name!=='typing' && typing) resetTyping();
+  if(name!=='cards' && cards) resetCards();
+  if(name==='rank') attachRank(curRankGame);
   else if(name==='shop') renderShop();
   else if(name==='auction') attachAuction();
   else if(name==='versus') enterVersus();
   else if(name==='admin') renderAdmin();
   else if(name==='mypage') renderMyPage();
+  else if(name==='games') refreshGameBests();
+  else if(name==='typing'){ resetTyping(); refreshGameBests(); }
+  else if(name==='snake'){ resetSnake(); refreshGameBests(); }
+  else if(name==='cards'){ resetCards(); refreshGameBests(); }
   else if(name==='mailbox'){
     document.querySelectorAll('.mail-tab').forEach(x=>x.classList.toggle('active', x.dataset.mtab==='inbox'));
     document.getElementById('mailInbox').classList.remove('hidden');
@@ -1705,6 +2044,31 @@ function toggleTheme(){
   applyTheme();
 }
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+// 한컴 타자 입력
+document.getElementById('typeInput').addEventListener('input', onTypeInput);
+// 지렁이 키보드 조작
+document.addEventListener('keydown', e=>{
+  if(!snake || !snake.alive) return;
+  const k=e.key;
+  if(k==='ArrowUp'||k==='w'||k==='W') snakeDir(0,-1);
+  else if(k==='ArrowDown'||k==='s'||k==='S') snakeDir(0,1);
+  else if(k==='ArrowLeft'||k==='a'||k==='A') snakeDir(-1,0);
+  else if(k==='ArrowRight'||k==='d'||k==='D') snakeDir(1,0);
+  else return;
+  e.preventDefault();
+});
+// 지렁이 스와이프 조작
+(function(){
+  const cv=document.getElementById('snakeCanvas'); if(!cv) return;
+  let sx=0, sy=0;
+  cv.addEventListener('touchstart', e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
+  cv.addEventListener('touchend', e=>{ const t=e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Math.abs(dx)<20 && Math.abs(dy)<20) return;
+    if(Math.abs(dx)>Math.abs(dy)) snakeDir(dx>0?1:-1, 0); else snakeDir(0, dy>0?1:-1);
+  }, {passive:true});
+})();
+// 랭킹 게임 탭
+document.querySelectorAll('.rank-tab').forEach(t=> t.addEventListener('click', ()=> attachRank(t.dataset.rgame)));
 window.addEventListener('resize', ()=>{
   if(play.game) play.game.renderTray();
   if(online && online.myGame) online.myGame.renderTray();
@@ -1714,6 +2078,7 @@ applyTheme();
 initFirebase();
 loadUser();
 refreshHeader();
+refreshGameBests();
 if(fbReady && auth){
   updateAuthLine();
   auth.onAuthStateChanged(handleAuth); // 로그인 상태에 따라 로그인창/게임 자동 결정
