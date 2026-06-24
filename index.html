@@ -261,7 +261,11 @@
 
   /* 한컴 타자 */
   .type-progress{color:var(--muted); font-size:14px; margin-bottom:10px;}
-  .type-target{font-size:22px; line-height:1.7; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:18px 20px; margin-bottom:14px; word-break:keep-all; user-select:none;}
+  .type-target{font-size:24px; line-height:1.8; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:18px 20px; margin-bottom:14px; word-break:keep-all; user-select:none; letter-spacing:1px;}
+  .type-target span{transition:color .08s;}
+  .type-target .tc-ok{color:var(--green);}
+  .type-target .tc-bad{color:#fff; background:rgba(255,46,136,.55); border-radius:4px;}
+  .type-target .tc-cur{color:var(--cyan); border-bottom:3px solid var(--cyan);}
   .type-input{width:100%; max-width:640px; padding:14px 16px; font-size:18px; border-radius:12px; background:rgba(0,0,0,.3); border:2px solid var(--cyan); color:var(--txt); outline:none;}
   .type-stat{margin-top:14px; color:var(--muted); font-size:15px;}
   .type-stat b{color:var(--cyan);}
@@ -879,7 +883,7 @@ function finishLogin(u){
   }
   attachSelfSync(); refreshHeader();
   if(!user.name) showNicknamePrompt(true);
-  openPage('play');
+  openPage('games');
   toast(isAdmin? '관리자로 로그인했어요 👑' : '로그인 완료!');
 }
 function showLogin(){
@@ -1456,72 +1460,104 @@ function renderRankList(arr){
 function detachRank(){ if(rankRef){ rankRef.off(); rankRef=null; } }
 
 /* =========================================================================
-   [게임2] 한컴 타자연습
+   [게임2] 한컴 타자연습 — 한글 '타수'(키 입력 수)로 정확히 측정
    ========================================================================= */
+// 한글 한 글자를 초성/중성/종성으로 분해해 실제 키 입력 수(타수)를 셈
+//  - 쌍자음(ㄲㄸㅃㅆㅉ), 겹모음(ㅘㅙㅚㅝㅞㅟㅢ), 겹받침은 키를 2번 누름 → 2타
+const _SCHO =[1,2,1,1,2,1,1,1,2,1,2,1,1,2,1,1,1,1,1];                 // 초성 19
+const _SJUNG=[1,1,1,1,1,1,1,1,1,2,2,2,1,1,2,2,2,1,1,2,1];             // 중성 21
+const _SJONG=[0,1,2,2,1,2,2,1,1,2,2,2,2,2,2,2,1,1,2,1,2,1,1,1,1,1,1,1];// 종성 28(0=받침없음)
+function charStrokes(ch){
+  const code=ch.charCodeAt(0);
+  if(code>=0xAC00 && code<=0xD7A3){ // 완성형 한글
+    const s=code-0xAC00;
+    return _SCHO[Math.floor(s/588)] + _SJUNG[Math.floor((s%588)/28)] + _SJONG[s%28];
+  }
+  return 1; // 공백/문장부호/영문/숫자/단독자모 = 1타
+}
+function countStrokes(str){ let n=0; for(const ch of str) n+=charStrokes(ch); return n; }
+
 const TYPE_SENTENCES = [
   '오늘도 즐거운 하루가 되시길 바랍니다.',
-  '꾸준히 연습하면 타자 실력이 늘어요.',
-  '바른 자세로 키보드를 쳐 봅시다.',
+  '꾸준히 연습하면 타자 실력이 쑥쑥 늘어요.',
+  '바른 자세로 키보드를 천천히 쳐 봅시다.',
   '노력은 절대 배신하지 않는다고 합니다.',
-  '작은 습관이 큰 변화를 만들어 냅니다.',
-  '책을 많이 읽으면 생각이 깊어집니다.',
-  '맑은 하늘과 시원한 바람이 좋습니다.',
-  '컴퓨터를 다룰 때는 집중이 필요해요.',
+  '작은 습관이 모여 큰 변화를 만들어 냅니다.',
+  '책을 많이 읽으면 생각의 깊이가 달라집니다.',
+  '맑은 하늘과 시원한 바람이 참 좋습니다.',
+  '컴퓨터를 다룰 때는 집중력이 필요합니다.',
   '친구와 함께라면 무엇이든 즐겁습니다.',
-  '천천히 그러나 정확하게 입력해 보세요.',
-  '코딩은 생각을 글로 옮기는 일입니다.',
-  '실수를 두려워하지 말고 도전하세요.',
-  '한 글자씩 또박또박 입력해 봅시다.',
-  '게임도 좋지만 공부도 잊지 마세요.',
-  '오늘의 노력이 내일의 실력이 됩니다.'
+  '정확하게 치다 보면 속도는 저절로 빨라져요.',
+  '코딩은 머릿속 생각을 글로 옮기는 일입니다.',
+  '실수를 두려워하지 말고 끝까지 도전하세요.',
+  '한 글자씩 또박또박 입력하는 습관이 중요해요.',
+  '게임도 좋지만 가끔은 책도 펼쳐 봅시다.',
+  '오늘의 작은 노력이 내일의 실력이 됩니다.'
 ];
-let typing=null;
-function resetTyping(){ typing=null; document.getElementById('typePlay').classList.add('hidden'); document.getElementById('typeIdle').classList.remove('hidden'); }
+let typing=null, typingComposing=false;
+function resetTyping(){ typing=null; typingComposing=false; document.getElementById('typePlay').classList.add('hidden'); document.getElementById('typeIdle').classList.remove('hidden'); }
 function startTyping(){
   document.getElementById('typeIdle').classList.add('hidden');
   document.getElementById('typePlay').classList.remove('hidden');
   const pool=[...TYPE_SENTENCES].sort(()=>Math.random()-0.5).slice(0,5);
-  typing={ idx:0, total:5, sentences:pool, startTime:0, charSum:0, timeSum:0 };
+  typing={ idx:0, total:5, sentences:pool, startTime:0, strokeSum:0, timeSum:0 };
   showTypingSentence();
   const inp=document.getElementById('typeInput'); inp.value=''; inp.focus();
 }
 function showTypingSentence(){
-  const t=typing.sentences[typing.idx];
-  document.getElementById('typeTarget').textContent=t;
   document.getElementById('typeProg').textContent=(typing.idx+1)+' / '+typing.total;
   document.getElementById('typeInput').value='';
   typing.startTime=0;
+  document.getElementById('typeSpeed').textContent='0';
+  document.getElementById('typeAcc').textContent='100';
+  renderTypeHighlight('');
+}
+// 목표 문장을 글자마다 색칠: 맞음(초록)/틀림(빨강)/현재위치(파랑 밑줄)
+function renderTypeHighlight(val){
+  const t=typing.sentences[typing.idx];
+  const box=document.getElementById('typeTarget'); box.innerHTML='';
+  for(let i=0;i<t.length;i++){
+    const sp=document.createElement('span');
+    sp.textContent=t[i];
+    if(i<val.length) sp.className = (val[i]===t[i]) ? 'tc-ok' : 'tc-bad';
+    else if(i===val.length) sp.className='tc-cur';
+    box.appendChild(sp);
+  }
 }
 function onTypeInput(){
   if(!typing) return;
-  const inp=document.getElementById('typeInput'); const val=inp.value; const target=typing.sentences[typing.idx];
+  const inp=document.getElementById('typeInput'); const val=inp.value; const t=typing.sentences[typing.idx];
   if(typing.startTime===0 && val.length>0) typing.startTime=Date.now();
-  // 정확도(현재까지)
-  let err=0; const n=Math.min(val.length, target.length);
-  for(let i=0;i<n;i++){ if(val[i]!==target[i]) err++; }
-  err += Math.max(0, val.length-target.length);
-  const acc = val.length? Math.max(0, Math.round((1-err/val.length)*100)) : 100;
-  document.getElementById('typeAcc').textContent=acc;
-  // 현재 속도
-  if(typing.startTime>0){ const secs=(Date.now()-typing.startTime)/1000; document.getElementById('typeSpeed').textContent = secs>0?Math.round(val.length/secs*60):0; }
-  // 문장 완성
-  if(val===target){
-    const secs=Math.max(0.1,(Date.now()-typing.startTime)/1000);
-    typing.charSum+=target.length; typing.timeSum+=secs;
+  renderTypeHighlight(val);
+  // 맞게 친 길이 / 정확도
+  let matched=0; const n=Math.min(val.length, t.length);
+  for(let i=0;i<n;i++){ if(val[i]===t[i]) matched++; else break; }
+  document.getElementById('typeAcc').textContent = val.length ? Math.round((matched/val.length)*100) : 100;
+  // 라이브 타속(타/분) — 맞게 친 부분만 타수로 계산
+  if(typing.startTime>0){
+    const sec=(Date.now()-typing.startTime)/1000;
+    document.getElementById('typeSpeed').textContent = sec>0 ? Math.round(countStrokes(val.slice(0,matched))/sec*60) : 0;
+  }
+  // 문장 완성 → 다음 (조합 중이어도 완전히 일치하면 진행, IME는 초기화)
+  if(val===t){
+    const sec=Math.max(0.2,(Date.now()-typing.startTime)/1000);
+    typing.strokeSum+=countStrokes(t); typing.timeSum+=sec;
     typing.idx++;
-    if(typing.idx>=typing.total) finishTyping();
-    else { showTypingSentence(); inp.focus(); }
+    if(typing.idx>=typing.total){ finishTyping(); return; }
+    showTypingSentence();
+    setTimeout(()=>{ const i2=document.getElementById('typeInput'); if(i2){ i2.value=''; i2.blur(); i2.focus(); } }, 0); // 남은 조합 초기화
   }
 }
 function finishTyping(){
-  const score = typing.timeSum>0 ? Math.round(typing.charSum/typing.timeSum*60) : 0; // 평균 타/분
+  const score = typing.timeSum>0 ? Math.round(typing.strokeSum/typing.timeSum*60) : 0; // 평균 타/분
+  const strokes = typing.strokeSum;
   resetTyping();
   const rec=submitScore('typing', score);
-  const earned=Math.floor(score/10); if(earned>0) addCoins(earned);
+  const earned=Math.floor(score/20); if(earned>0) addCoins(earned);
   showOverlay(`
     <div class="confetti">⌨️</div>
     <p class="big" style="color:${rec?'var(--green)':'var(--cyan)'}">${rec?'신기록!':'타자 완료!'}</p>
-    <p class="desc">평균 <b>${score}</b> 타/분<br>획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b></p>
+    <p class="desc">평균 속도 <b>${score}</b> 타/분<br>총 <b>${strokes}</b>타 입력 · 획득 코인 <b style="color:var(--gold)">🪙 ${earned}</b></p>
     <div class="btns"><button class="btn primary" onclick="hideOverlay();startTyping()">다시하기</button><button class="btn" onclick="hideOverlay()">닫기</button></div>`);
 }
 
@@ -1874,12 +1910,12 @@ function onlineResult(iWon){
     <p class="desc">${iWon?'상대가 먼저 막혔어요!':'아쉽지만 다음 판에 설욕하세요!'}</p>
     <p class="desc" id="onModalNote" style="color:var(--cyan)"></p>
     <div class="btns"><button class="btn cyan" onclick="requestRematch()">재경기 🔄</button>
-      <button class="btn" onclick="openPage('play')">나가기</button></div>`);
+      <button class="btn" onclick="openPage('games')">나가기</button></div>`);
 }
 function requestRematch(){ online.roomRef.child(online.me).update({rematch:true}); const el=document.getElementById('onModalNote'); if(el) el.textContent='상대의 동의를 기다리는 중...'; }
 function opponentLeft(){ online.finished=true;
   showOverlay(`<div class="confetti">🚪</div><p class="big" style="color:var(--muted)">상대가 나갔어요</p>
-    <p class="desc">연결이 끊겼어요.</p><div class="btns"><button class="btn" onclick="openPage('play')">나가기</button></div>`); }
+    <p class="desc">연결이 끊겼어요.</p><div class="btns"><button class="btn" onclick="openPage('games')">나가기</button></div>`); }
 function cleanupVersus(){
   detachLobby();
   if(!online) return;
@@ -2046,6 +2082,8 @@ function toggleTheme(){
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
 // 한컴 타자 입력
 document.getElementById('typeInput').addEventListener('input', onTypeInput);
+document.getElementById('typeInput').addEventListener('compositionstart', ()=>{ typingComposing=true; });
+document.getElementById('typeInput').addEventListener('compositionend', ()=>{ typingComposing=false; onTypeInput(); });
 // 지렁이 키보드 조작
 document.addEventListener('keydown', e=>{
   if(!snake || !snake.alive) return;
